@@ -89,7 +89,7 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
                 required
               >
                 <option value="" disabled className="text-stone-400">학년</option>
-                {[1, 2, 3, 4, 5, 6].map(g => (
+                {[1, 2, 3].map(g => (
                   <option key={g} value={g} className="text-stone-800 font-medium">
                     {g}학년
                   </option>
@@ -110,7 +110,7 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
                 required
               >
                 <option value="" disabled className="text-stone-400">반</option>
-                {Array.from({ length: 15 }, (_, i) => i + 1).map((c) => (
+                {[1, 2].map((c) => (
                   <option key={c} value={c} className="text-stone-800 font-medium">
                     {c}반
                   </option>
@@ -131,7 +131,7 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
                 required
               >
                 <option value="" disabled className="text-stone-400">번호</option>
-                {Array.from({ length: 35 }, (_, i) => i + 1).map((num) => (
+                {Array.from({ length: 25 }, (_, i) => i + 1).map((num) => (
                   <option key={num} value={num} className="text-stone-800 font-medium">
                     {num}번
                   </option>

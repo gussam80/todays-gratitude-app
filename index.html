@@ -929,8 +929,112 @@
       const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
       const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
       const [isRosterUploadOpen, setIsRosterUploadOpen] = useState(false);
+      const [rosterFile, setRosterFile] = useState(null);
+      const [parsedRosterStudents, setParsedRosterStudents] = useState([]);
+      const [rosterError, setRosterError] = useState('');
+      const [isRosterProcessing, setIsRosterProcessing] = useState(false);
       const [isExportOpen, setIsExportOpen] = useState(false);
       const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+      // Download Roster Template
+      const handleDownloadRosterTemplate = () => {
+        if (!window.XLSX) {
+          showToast('엑셀 모듈이 로드되지 않았습니다.', 'error');
+          return;
+        }
+        const templateData = [
+          ['번호', '이름'],
+          [1, '김민지'],
+          [2, '이서연'],
+          [3, '박지우'],
+          [4, '최도윤'],
+          [5, '정하은']
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '학생명단');
+        XLSX.writeFile(wb, `학생명단_양식_${teacherGrade}학년${teacherClassNum}반.xlsx`);
+      };
+
+      // Handle Roster File Upload
+      const handleRosterFileChange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        setRosterError('');
+        setRosterFile(file);
+        setIsRosterProcessing(true);
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            const list = [];
+            for (let i = 0; i < json.length; i++) {
+              const row = json[i];
+              if (!row || row.length === 0) continue;
+              const col0 = String(row[0] !== undefined ? row[0] : '').trim();
+              const col1 = String(row[1] !== undefined ? row[1] : '').trim();
+              if (col0.includes('번호') || col1.includes('이름')) continue;
+              let num = parseInt(col0, 10);
+              let name = col1;
+              if (isNaN(num) && !isNaN(parseInt(col1, 10))) {
+                num = parseInt(col1, 10);
+                name = col0;
+              }
+              if (num > 0 && name) {
+                list.push({
+                  id: `${config.year || 2026}-${teacherGrade}-${teacherClassNum}-${num}`,
+                  grade: teacherGrade,
+                  classNum: teacherClassNum,
+                  number: num,
+                  name: name
+                });
+              }
+            }
+            list.sort((a, b) => a.number - b.number);
+            if (list.length === 0) {
+              setRosterError('파일에서 학생 정보를 찾을 수 없습니다. 번호와 이름 열이 있는지 확인해 주세요.');
+            } else {
+              setParsedRosterStudents(list);
+            }
+          } catch (err) {
+            setRosterError('엑셀 파일을 읽는 중 오류가 발생했습니다.');
+          } finally {
+            setIsRosterProcessing(false);
+          }
+        };
+        reader.readAsArrayBuffer(file);
+      };
+
+      // Apply Roster to Students and Sync to Firebase
+      const handleApplyRoster = () => {
+        if (parsedRosterStudents.length === 0) return;
+        setStudents(prev => {
+          const others = prev.filter(s => !(s.grade === teacherGrade && s.classNum === teacherClassNum));
+          const updated = [...others, ...parsedRosterStudents].sort((a, b) => {
+            if (a.grade !== b.grade) return a.grade - b.grade;
+            if (a.classNum !== b.classNum) return a.classNum - b.classNum;
+            return a.number - b.number;
+          });
+          localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
+          return updated;
+        });
+
+        const db = getFirestoreDb(config);
+        if (db) {
+          parsedRosterStudents.forEach(st => {
+            db.collection('students').doc(st.id).set(st, { merge: true }).catch(console.warn);
+          });
+        }
+
+        showToast(`${teacherGrade}학년 ${teacherClassNum}반 학생 ${parsedRosterStudents.length}명이 등록되었습니다! 🌱`, 'success');
+        setIsRosterUploadOpen(false);
+        setParsedRosterStudents([]);
+        setRosterFile(null);
+      };
 
       // 전체 완전 초기화 (학생 명단 + 모든 일기 + 메모)
       const handleResetAll = () => {
@@ -1370,10 +1474,23 @@
 
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setIsExportOpen(true)}
-                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5"
+                      onClick={() => {
+                        setParsedRosterStudents([]);
+                        setRosterFile(null);
+                        setRosterError('');
+                        setIsRosterUploadOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-sage-200 text-sage-800 bg-sage-50/80 hover:bg-sage-100 flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      title="엑셀 또는 CSV 파일로 학급 명렬 일괄 등록"
                     >
-                      <Icon.Download className="w-3.5 h-3.5" />
+                      <Icon.Upload className="w-3.5 h-3.5 text-sage-600" />
+                      <span>명렬 일괄 업로드</span>
+                    </button>
+                    <button
+                      onClick={() => setIsExportOpen(true)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Icon.Download className="w-3.5 h-3.5 text-stone-600" />
                       <span>엑셀 다운로드</span>
                     </button>
                   </div>
@@ -1551,7 +1668,7 @@
                           required
                         >
                           <option value="" disabled className="text-stone-400">학년</option>
-                          {[1, 2, 3, 4, 5, 6].map(g => (
+                          {[1, 2, 3].map(g => (
                             <option key={g} value={g} className="text-stone-800 font-medium">{g}학년</option>
                           ))}
                         </select>
@@ -1567,7 +1684,7 @@
                           required
                         >
                           <option value="" disabled className="text-stone-400">반</option>
-                          {Array.from({ length: 15 }, (_, i) => i + 1).map(c => (
+                          {[1, 2].map(c => (
                             <option key={c} value={c} className="text-stone-800 font-medium">{c}반</option>
                           ))}
                         </select>
@@ -1583,7 +1700,7 @@
                           required
                         >
                           <option value="" disabled className="text-stone-400">번호</option>
-                          {Array.from({ length: 35 }, (_, i) => i + 1).map(n => (
+                          {Array.from({ length: 25 }, (_, i) => i + 1).map(n => (
                             <option key={n} value={n} className="text-stone-800 font-medium">{n}번</option>
                           ))}
                         </select>
@@ -2200,6 +2317,105 @@
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* Roster Upload Modal */}
+          {isRosterUploadOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-lg rounded-3xl p-6 shadow-card border border-stone-100 animate-scale-in space-y-4 max-h-[92vh] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-2xl bg-sage-100 flex items-center justify-center text-sage-700">
+                      <Icon.Upload className="w-5 h-5 text-sage-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-bold text-stone-900">학생 명렬 엑셀/CSV 일괄 업로드</h3>
+                      <p className="text-xs text-stone-500">{teacherGrade}학년 {teacherClassNum}반 ({config.year || 2026}학년도)</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsRosterUploadOpen(false)} className="p-1.5 rounded-full text-stone-400 hover:bg-stone-100 cursor-pointer">
+                    <Icon.X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Template Download */}
+                <div className="flex items-center justify-between p-3.5 bg-cream-50 rounded-2xl border border-stone-200 text-xs">
+                  <span className="text-stone-600">엑셀 양식이 필요하신가요? 기본 양식을 다운로드하세요.</span>
+                  <button
+                    type="button"
+                    onClick={handleDownloadRosterTemplate}
+                    className="flex items-center gap-1 font-bold text-sage-700 hover:text-sage-800 bg-sage-100 hover:bg-sage-200 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                  >
+                    <Icon.Download className="w-3.5 h-3.5" />
+                    <span>양식 다운로드</span>
+                  </button>
+                </div>
+
+                {/* File Drop / Select */}
+                <div className="border-2 border-dashed border-stone-200 hover:border-sage-400 rounded-3xl p-6 text-center transition bg-cream-50/40">
+                  <input
+                    type="file"
+                    id="roster-upload-input"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleRosterFileChange}
+                    className="hidden"
+                  />
+                  <label htmlFor="roster-upload-input" className="cursor-pointer block space-y-2">
+                    <Icon.Upload className="w-8 h-8 text-sage-500 mx-auto" />
+                    <p className="text-sm font-bold text-stone-800">
+                      {rosterFile ? rosterFile.name : '엑셀(.xlsx) 또는 CSV 파일을 선택하세요'}
+                    </p>
+                    <p className="text-xs text-stone-400">
+                      지원 열: <strong>번호</strong>, <strong>이름</strong>
+                    </p>
+                  </label>
+                </div>
+
+                {/* Error */}
+                {rosterError && (
+                  <div className="p-3 bg-coral-50 border border-coral-200 rounded-xl text-xs text-coral-700">
+                    <span>{rosterError}</span>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {parsedRosterStudents.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+                      <Icon.CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <span>{parsedRosterStudents.length}명의 학생 명단이 인식되었습니다</span>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto border border-stone-200 rounded-2xl p-2.5 bg-stone-50 text-xs grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {parsedRosterStudents.map(s => (
+                        <div key={s.id} className="bg-white p-2 rounded-xl border border-stone-100 flex items-center gap-2 shadow-2xs">
+                          <span className="font-bold text-stone-500">{s.number}번</span>
+                          <span className="font-bold text-stone-800">{s.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-3 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsRosterUploadOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-semibold hover:bg-stone-50 cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyRoster}
+                    disabled={parsedRosterStudents.length === 0 || isRosterProcessing}
+                    className="px-5 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 disabled:bg-stone-300 text-white text-xs font-bold shadow-soft transition cursor-pointer"
+                  >
+                    {isRosterProcessing ? '처리 중...' : `${parsedRosterStudents.length}명 일괄 등록하기`}
+                  </button>
+                </div>
               </div>
             </div>
           )}

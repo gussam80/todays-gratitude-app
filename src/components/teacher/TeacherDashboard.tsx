@@ -337,7 +337,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             onClick={() => setIsRosterUploadOpen(true)}
             className="text-xs"
           >
-            명단 일괄 등록
+            명렬 일괄 업로드
           </Button>
 
           <Button
