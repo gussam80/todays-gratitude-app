@@ -6,6 +6,9 @@
   <title>오늘의 감사 - 감사일기 🌱</title>
   <meta name="description" content="학생들이 매일 감사한 일을 3가지씩 기록하고, AI 격려 코멘트를 받으며, 선생님이 함께 나누는 학교 맞춤형 감사일기 웹앱" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
   <!-- Pretendard Web Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -917,17 +920,22 @@
       const [questionIdx, setQuestionIdx] = useState(() => (new Date().getDate() - 1) % DAILY_QUESTIONS.length);
       const [quoteIdx, setQuoteIdx] = useState(() => (new Date().getDate() - 1) % INSPIRING_QUOTES.length);
 
-      // Teacher Dashboard States
-      const [teacherGrade, setTeacherGrade] = useState(() => localStorage.getItem('last_teacher_grade') || '');
-      const [teacherClassNum, setTeacherClassNum] = useState(() => localStorage.getItem('last_teacher_class') || '');
+      // Teacher Dashboard States (기본값: 학년/반 미선택 안내 텍스트 표시)
+      const [teacherGrade, setTeacherGrade] = useState('');
+      const [teacherClassNum, setTeacherClassNum] = useState('');
+
+      useEffect(() => {
+        try {
+          localStorage.removeItem('last_teacher_grade');
+          localStorage.removeItem('last_teacher_class');
+        } catch (e) {}
+      }, []);
 
       const handleTeacherGradeChange = (val) => {
         setTeacherGrade(val);
-        localStorage.setItem('last_teacher_grade', val);
       };
       const handleTeacherClassChange = (val) => {
         setTeacherClassNum(val);
-        localStorage.setItem('last_teacher_class', val);
       };
       const [teacherSelectedDate, setTeacherSelectedDate] = useState(() => getTodayString());
       const [teacherViewMode, setTeacherViewMode] = useState('roster'); // 'roster' | 'calendar'
@@ -1396,7 +1404,7 @@
                       className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1"
                     >
                       <Icon.Settings className="w-3.5 h-3.5" />
-                      <span>학급 설정</span>
+                      <span>설정</span>
                     </button>
                     <button
                       onClick={() => setIsTeacherMode(false)}

@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
                   size="sm"
                   onClick={onOpenSettings}
                 >
-                  ⚙️ 학급 설정
+                  ⚙️ 설정
                 </Button>
               )}
               <Button

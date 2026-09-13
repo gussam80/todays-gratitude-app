@@ -47,17 +47,15 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     aiProvider: 'mock'
   });
 
-  const [selectedGrade, setSelectedGrade] = useState<string>(() => localStorage.getItem('last_teacher_grade') || '');
-  const [selectedClassNum, setSelectedClassNum] = useState<string>(() => localStorage.getItem('last_teacher_class') || '');
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [selectedClassNum, setSelectedClassNum] = useState<string>('');
 
   const handleGradeChange = (val: string) => {
     setSelectedGrade(val);
-    localStorage.setItem('last_teacher_grade', val);
   };
 
   const handleClassNumChange = (val: string) => {
     setSelectedClassNum(val);
-    localStorage.setItem('last_teacher_class', val);
   };
 
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayString());
@@ -91,17 +89,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     try {
       const currentConfig = await storageService.getClassConfig();
       setConfig(currentConfig);
-      const savedGrade = localStorage.getItem('last_teacher_grade') ?? (currentConfig.grade ? String(currentConfig.grade) : '');
-      const savedClass = localStorage.getItem('last_teacher_class') ?? (currentConfig.classNum ? String(currentConfig.classNum) : '');
-      setSelectedGrade(savedGrade);
-      setSelectedClassNum(savedClass);
-
-      const gNum = savedGrade ? parseInt(savedGrade, 10) : undefined;
-      const cNum = savedClass ? parseInt(savedClass, 10) : undefined;
-      const studentList = await storageService.getStudents(
-        isNaN(gNum as number) ? undefined : gNum,
-        isNaN(cNum as number) ? undefined : cNum
-      );
+      const studentList = await storageService.getStudents();
       setStudents(studentList);
 
       const entryList = await storageService.getGratitudeEntries();
