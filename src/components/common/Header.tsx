@@ -47,6 +47,14 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2 sm:gap-3">
           {isTeacherMode ? (
             <>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<GraduationCap className="w-4 h-4" />}
+                onClick={onExitTeacherMode}
+              >
+                학생 화면으로
+              </Button>
               {onOpenSettings && (
                 <Button
                   variant="outline"
@@ -56,14 +64,6 @@ export const Header: React.FC<HeaderProps> = ({
                   ⚙️ 설정
                 </Button>
               )}
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<GraduationCap className="w-4 h-4" />}
-                onClick={onExitTeacherMode}
-              >
-                학생 화면으로
-              </Button>
             </>
           ) : (
             <>
