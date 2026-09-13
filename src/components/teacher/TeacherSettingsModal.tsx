@@ -160,7 +160,7 @@ export const TeacherSettingsModal: React.FC<TeacherSettingsModalProps> = ({
       title={
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-stone-700" />
-          <span>교사용 관리 설정</span>
+          <span>설정</span>
         </div>
       }
       subtitle="학급 정보, 비밀번호, AI 및 클라우드 연동을 관리합니다."
