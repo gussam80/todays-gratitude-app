@@ -298,23 +298,32 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             </h2>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-cream-50 px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700">
-            <input
-              type="text"
+          <div className="flex items-center gap-2">
+            <select
               value={selectedGrade}
               onChange={(e) => handleGradeChange(e.target.value)}
-              placeholder="학년"
-              className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
-            />
-            <span className="text-stone-600 font-bold">학년</span>
-            <input
-              type="text"
+              className={`bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sage-400 cursor-pointer transition shadow-xs ${
+                !selectedGrade ? 'text-stone-400' : 'text-stone-800'
+              }`}
+            >
+              <option value="" className="text-stone-400">학년</option>
+              {[1, 2, 3].map(g => (
+                <option key={g} value={g} className="text-stone-800 font-semibold">{g}학년</option>
+              ))}
+            </select>
+
+            <select
               value={selectedClassNum}
               onChange={(e) => handleClassNumChange(e.target.value)}
-              placeholder="반"
-              className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
-            />
-            <span className="text-stone-600 font-bold">반</span>
+              className={`bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-sage-400 cursor-pointer transition shadow-xs ${
+                !selectedClassNum ? 'text-stone-400' : 'text-stone-800'
+              }`}
+            >
+              <option value="" className="text-stone-400">반</option>
+              {[1, 2].map(c => (
+                <option key={c} value={c} className="text-stone-800 font-semibold">{c}반</option>
+              ))}
+            </select>
           </div>
 
           {/* Date Picker Bar */}
