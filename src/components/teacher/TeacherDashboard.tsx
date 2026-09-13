@@ -351,17 +351,6 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           </Button>
 
           <Button
-            variant="outline"
-            size="sm"
-            icon={<RotateCcw className="w-3.5 h-3.5 text-rose-600" />}
-            onClick={() => setIsResetModalOpen(true)}
-            title="데이터 전체 리셋"
-            className="text-xs text-rose-700 border-rose-200 bg-rose-50/60 hover:bg-rose-100 hover:border-rose-300"
-          >
-            전체 리셋
-          </Button>
-
-          <Button
             variant="ghost"
             size="sm"
             icon={<Settings className="w-4 h-4 text-stone-600" />}
