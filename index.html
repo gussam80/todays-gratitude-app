@@ -918,8 +918,17 @@
       const [quoteIdx, setQuoteIdx] = useState(() => (new Date().getDate() - 1) % INSPIRING_QUOTES.length);
 
       // Teacher Dashboard States
-      const [teacherGrade, setTeacherGrade] = useState(1);
-      const [teacherClassNum, setTeacherClassNum] = useState(1);
+      const [teacherGrade, setTeacherGrade] = useState(() => localStorage.getItem('last_teacher_grade') || '');
+      const [teacherClassNum, setTeacherClassNum] = useState(() => localStorage.getItem('last_teacher_class') || '');
+
+      const handleTeacherGradeChange = (val) => {
+        setTeacherGrade(val);
+        localStorage.setItem('last_teacher_grade', val);
+      };
+      const handleTeacherClassChange = (val) => {
+        setTeacherClassNum(val);
+        localStorage.setItem('last_teacher_class', val);
+      };
       const [teacherSelectedDate, setTeacherSelectedDate] = useState(() => getTodayString());
       const [teacherViewMode, setTeacherViewMode] = useState('roster'); // 'roster' | 'calendar'
       const [searchTerm, setSearchTerm] = useState('');
@@ -953,7 +962,7 @@
         const ws = XLSX.utils.aoa_to_sheet(templateData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '학생명단');
-        XLSX.writeFile(wb, `학생명단_양식_${teacherGrade}학년${teacherClassNum}반.xlsx`);
+        XLSX.writeFile(wb, `학생명단_양식_${teacherGrade ? teacherGrade + '학년' : ''}${teacherClassNum ? teacherClassNum + '반' : ''}.xlsx`);
       };
 
       // Handle Roster File Upload
@@ -985,10 +994,12 @@
                 name = col0;
               }
               if (num > 0 && name) {
+                const tg = teacherGrade || 1;
+                const tc = teacherClassNum || 1;
                 list.push({
-                  id: `${config.year || 2026}-${teacherGrade}-${teacherClassNum}-${num}`,
-                  grade: teacherGrade,
-                  classNum: teacherClassNum,
+                  id: `${config.year || 2026}-${tg}-${tc}-${num}`,
+                  grade: isNaN(Number(tg)) ? tg : Number(tg),
+                  classNum: isNaN(Number(tc)) ? tc : Number(tc),
                   number: num,
                   name: name
                 });
@@ -1013,10 +1024,10 @@
       const handleApplyRoster = () => {
         if (parsedRosterStudents.length === 0) return;
         setStudents(prev => {
-          const others = prev.filter(s => !(s.grade === teacherGrade && s.classNum === teacherClassNum));
+          const others = prev.filter(s => !(String(s.grade) === String(teacherGrade) && String(s.classNum) === String(teacherClassNum)));
           const updated = [...others, ...parsedRosterStudents].sort((a, b) => {
-            if (a.grade !== b.grade) return a.grade - b.grade;
-            if (a.classNum !== b.classNum) return a.classNum - b.classNum;
+            if (a.grade !== b.grade) return String(a.grade).localeCompare(String(b.grade));
+            if (a.classNum !== b.classNum) return String(a.classNum).localeCompare(String(b.classNum));
             return a.number - b.number;
           });
           localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
@@ -1030,7 +1041,7 @@
           });
         }
 
-        showToast(`${teacherGrade}학년 ${teacherClassNum}반 학생 ${parsedRosterStudents.length}명이 등록되었습니다! 🌱`, 'success');
+        showToast(`${teacherGrade ? teacherGrade + '학년 ' : ''}${teacherClassNum ? teacherClassNum + '반 ' : ''}학생 ${parsedRosterStudents.length}명이 등록되었습니다! 🌱`, 'success');
         setIsRosterUploadOpen(false);
         setParsedRosterStudents([]);
         setRosterFile(null);
@@ -1226,11 +1237,14 @@
       // Teacher Stats
       const teacherStudents = useMemo(() => {
         const map = new Map();
+        const tg = String(teacherGrade || '').trim();
+        const tc = String(teacherClassNum || '').trim();
+
         students
-          .filter(s => s.grade === teacherGrade && s.classNum === teacherClassNum)
+          .filter(s => (!tg || String(s.grade) === tg) && (!tc || String(s.classNum) === tc))
           .forEach(s => map.set(s.id || `${s.grade}-${s.classNum}-${s.number}`, s));
         entries
-          .filter(e => e.grade === teacherGrade && e.classNum === teacherClassNum)
+          .filter(e => (!tg || String(e.grade) === tg) && (!tc || String(e.classNum) === tc))
           .forEach(e => {
             const id = e.studentId || `${e.grade}-${e.classNum}-${e.studentNumber}`;
             if (!map.has(id)) {
@@ -1325,7 +1339,7 @@
         const ws = XLSX.utils.json_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '학급감사일기');
-        XLSX.writeFile(wb, `감사일기_${teacherSelectedDate}_${teacherGrade}학년${teacherClassNum}반.xlsx`);
+        XLSX.writeFile(wb, `감사일기_${teacherSelectedDate}_${teacherGrade ? teacherGrade + '학년' : ''}${teacherClassNum ? teacherClassNum + '반' : ''}.xlsx`);
         showToast('엑셀 파일이 다운로드되었습니다! 📥', 'success');
         setIsExportOpen(false);
       };
@@ -1431,29 +1445,30 @@
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
                       <span>감사일기 교사 대시보드</span>
-                      <span className="text-xs bg-sage-100 text-sage-800 px-2.5 py-0.5 rounded-full font-bold">
-                        {teacherGrade}학년 {teacherClassNum}반
-                      </span>
+                      {(teacherGrade || teacherClassNum) ? (
+                        <span className="text-xs bg-sage-100 text-sage-800 px-2.5 py-0.5 rounded-full font-bold">
+                          {teacherGrade ? `${teacherGrade}학년` : ''} {teacherClassNum ? `${teacherClassNum}반` : ''}
+                        </span>
+                      ) : null}
                     </h2>
 
-                    <div className="flex items-center gap-2">
-                      <select
+                    <div className="flex items-center gap-1.5 bg-cream-50 px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700">
+                      <input
+                        type="text"
                         value={teacherGrade}
-                        onChange={(e) => setTeacherGrade(Number(e.target.value))}
-                        className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
-                      >
-                        <option value={1}>1학년</option>
-                        <option value={2}>2학년</option>
-                        <option value={3}>3학년</option>
-                      </select>
-                      <select
+                        onChange={(e) => handleTeacherGradeChange(e.target.value)}
+                        placeholder="학년"
+                        className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
+                      />
+                      <span className="text-stone-600 font-bold">학년</span>
+                      <input
+                        type="text"
                         value={teacherClassNum}
-                        onChange={(e) => setTeacherClassNum(Number(e.target.value))}
-                        className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
-                      >
-                        <option value={1}>1반</option>
-                        <option value={2}>2반</option>
-                      </select>
+                        onChange={(e) => handleTeacherClassChange(e.target.value)}
+                        placeholder="반"
+                        className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
+                      />
+                      <span className="text-stone-600 font-bold">반</span>
                     </div>
 
                     <div className="flex items-center gap-1 bg-cream-50 px-2 py-1 rounded-xl border border-stone-200 text-xs">
@@ -2332,7 +2347,7 @@
                     </div>
                     <div>
                       <h3 className="text-base sm:text-lg font-bold text-stone-900">학생 명렬 엑셀/CSV 일괄 업로드</h3>
-                      <p className="text-xs text-stone-500">{teacherGrade}학년 {teacherClassNum}반 ({config.year || 2026}학년도)</p>
+                      <p className="text-xs text-stone-500">{teacherGrade ? `${teacherGrade}학년 ` : ''}{teacherClassNum ? `${teacherClassNum}반 ` : ''}({config.year || 2026}학년도)</p>
                     </div>
                   </div>
                   <button onClick={() => setIsRosterUploadOpen(false)} className="p-1.5 rounded-full text-stone-400 hover:bg-stone-100 cursor-pointer">
@@ -2429,7 +2444,7 @@
                   <span>감사일기 엑셀 다운로드</span>
                 </h3>
                 <p className="text-xs text-stone-500">
-                  {teacherGrade}학년 {teacherClassNum}반 ({teacherSelectedDate}) 데이터를 엑셀(`.xlsx`) 파일로 다운로드합니다.
+                  {teacherGrade ? `${teacherGrade}학년 ` : ''}{teacherClassNum ? `${teacherClassNum}반 ` : ''}({teacherSelectedDate}) 데이터를 엑셀(`.xlsx`) 파일로 다운로드합니다.
                 </p>
                 <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
                   <button onClick={() => setIsExportOpen(false)} className="px-4 py-2 rounded-xl border border-stone-200 text-xs text-stone-600">

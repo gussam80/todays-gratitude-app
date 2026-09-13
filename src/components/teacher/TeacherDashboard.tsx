@@ -47,8 +47,19 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     aiProvider: 'mock'
   });
 
-  const [selectedGrade, setSelectedGrade] = useState<number>(1);
-  const [selectedClassNum, setSelectedClassNum] = useState<number>(2);
+  const [selectedGrade, setSelectedGrade] = useState<string>(() => localStorage.getItem('last_teacher_grade') || '');
+  const [selectedClassNum, setSelectedClassNum] = useState<string>(() => localStorage.getItem('last_teacher_class') || '');
+
+  const handleGradeChange = (val: string) => {
+    setSelectedGrade(val);
+    localStorage.setItem('last_teacher_grade', val);
+  };
+
+  const handleClassNumChange = (val: string) => {
+    setSelectedClassNum(val);
+    localStorage.setItem('last_teacher_class', val);
+  };
+
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayString());
   const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth() + 1);
@@ -80,10 +91,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     try {
       const currentConfig = await storageService.getClassConfig();
       setConfig(currentConfig);
-      setSelectedGrade(currentConfig.grade || 1);
-      setSelectedClassNum(currentConfig.classNum || 2);
+      const savedGrade = localStorage.getItem('last_teacher_grade') ?? (currentConfig.grade ? String(currentConfig.grade) : '');
+      const savedClass = localStorage.getItem('last_teacher_class') ?? (currentConfig.classNum ? String(currentConfig.classNum) : '');
+      setSelectedGrade(savedGrade);
+      setSelectedClassNum(savedClass);
 
-      const studentList = await storageService.getStudents(currentConfig.grade, currentConfig.classNum);
+      const gNum = savedGrade ? parseInt(savedGrade, 10) : undefined;
+      const cNum = savedClass ? parseInt(savedClass, 10) : undefined;
+      const studentList = await storageService.getStudents(
+        isNaN(gNum as number) ? undefined : gNum,
+        isNaN(cNum as number) ? undefined : cNum
+      );
       setStudents(studentList);
 
       const entryList = await storageService.getGratitudeEntries();
@@ -103,7 +121,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Reload students when grade/class filter changes
   useEffect(() => {
     const fetchStudentsForFilter = async () => {
-      const studentList = await storageService.getStudents(selectedGrade, selectedClassNum);
+      const gNum = selectedGrade ? parseInt(selectedGrade, 10) : undefined;
+      const cNum = selectedClassNum ? parseInt(selectedClassNum, 10) : undefined;
+      const studentList = await storageService.getStudents(
+        isNaN(gNum as number) ? undefined : gNum,
+        isNaN(cNum as number) ? undefined : cNum
+      );
       setStudents(studentList);
     };
     fetchStudentsForFilter();
@@ -267,31 +290,31 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           <div>
             <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
               <span>감사일기 교사 대시보드</span>
-              <span className="text-xs bg-sage-100 text-sage-800 px-2.5 py-0.5 rounded-full font-bold">
-                {selectedGrade}학년 {selectedClassNum}반
-              </span>
+              {(selectedGrade || selectedClassNum) ? (
+                <span className="text-xs bg-sage-100 text-sage-800 px-2.5 py-0.5 rounded-full font-bold">
+                  {selectedGrade ? `${selectedGrade}학년` : ''} {selectedClassNum ? `${selectedClassNum}반` : ''}
+                </span>
+              ) : null}
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            <select
+          <div className="flex items-center gap-1.5 bg-cream-50 px-2.5 py-1.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-700">
+            <input
+              type="text"
               value={selectedGrade}
-              onChange={(e) => setSelectedGrade(Number(e.target.value))}
-              className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
-            >
-              <option value={1}>1학년</option>
-              <option value={2}>2학년</option>
-              <option value={3}>3학년</option>
-            </select>
-
-            <select
+              onChange={(e) => handleGradeChange(e.target.value)}
+              placeholder="학년"
+              className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
+            />
+            <span className="text-stone-600 font-bold">학년</span>
+            <input
+              type="text"
               value={selectedClassNum}
-              onChange={(e) => setSelectedClassNum(Number(e.target.value))}
-              className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
-            >
-              <option value={1}>1반</option>
-              <option value={2}>2반</option>
-            </select>
+              onChange={(e) => handleClassNumChange(e.target.value)}
+              placeholder="반"
+              className="w-14 bg-white border border-stone-200 rounded-lg px-2 py-1 text-center font-bold text-stone-800 placeholder:text-stone-400 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-sage-400 text-xs shadow-xs"
+            />
+            <span className="text-stone-600 font-bold">반</span>
           </div>
 
           {/* Date Picker Bar */}
@@ -481,8 +504,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         <RosterUploadModal
           isOpen={true}
           onClose={() => setIsRosterUploadOpen(false)}
-          grade={selectedGrade}
-          classNum={selectedClassNum}
+          grade={parseInt(selectedGrade, 10) || 1}
+          classNum={parseInt(selectedClassNum, 10) || 1}
           year={config.year || 2026}
           onUploadSuccess={handleRosterUploaded}
         />
@@ -497,8 +520,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           notes={allNotes}
           defaultYear={calendarYear}
           defaultMonth={calendarMonth}
-          defaultGrade={selectedGrade}
-          defaultClassNum={selectedClassNum}
+          defaultGrade={parseInt(selectedGrade, 10) || 1}
+          defaultClassNum={parseInt(selectedClassNum, 10) || 1}
         />
       )}
 
