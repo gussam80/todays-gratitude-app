@@ -22,12 +22,12 @@ export const TeacherStatsCards: React.FC<TeacherStatsCardsProps> = ({ stats, sel
         </span>
       </div>
 
-      {/* 5 Stats Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* 4 Stats Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Total Students */}
         <div className="bg-white rounded-2xl p-4 border border-stone-100 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between text-stone-400 mb-1">
-            <span className="text-xs font-medium">전체 학생</span>
+            <span className="text-xs font-medium">학생수</span>
             <Users className="w-4 h-4 text-stone-400" />
           </div>
           <div className="flex items-baseline gap-1">
@@ -48,18 +48,6 @@ export const TeacherStatsCards: React.FC<TeacherStatsCardsProps> = ({ stats, sel
           </div>
         </div>
 
-        {/* Pending (Neutral stone color, not aggressive red) */}
-        <div className="bg-white rounded-2xl p-4 border border-stone-100 shadow-soft flex flex-col justify-between">
-          <div className="flex items-center justify-between text-stone-500 mb-1">
-            <span className="text-xs font-medium">미작성</span>
-            <Clock className="w-4 h-4 text-stone-400" />
-          </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-stone-700">{stats.pendingToday}</span>
-            <span className="text-xs text-stone-400">명</span>
-          </div>
-        </div>
-
         {/* Completion Rate */}
         <div className="bg-white rounded-2xl p-4 border border-sage-100 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between text-sage-600 mb-1">
@@ -73,7 +61,7 @@ export const TeacherStatsCards: React.FC<TeacherStatsCardsProps> = ({ stats, sel
         </div>
 
         {/* Monthly Avg Days */}
-        <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-soft flex flex-col justify-between col-span-2 sm:col-span-1">
+        <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-soft flex flex-col justify-between">
           <div className="flex items-center justify-between text-amber-700 mb-1">
             <span className="text-xs font-medium">이달 평균 작성</span>
             <Calendar className="w-4 h-4 text-amber-500" />

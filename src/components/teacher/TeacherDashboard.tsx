@@ -124,14 +124,14 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
   // Calculate statistics for selectedDate
   const stats: ClassStats = useMemo(() => {
-    const total = students.length || config.totalStudents || 25;
+    const total = students.length;
     const completed = students.filter(s => currentDayEntriesMap.has(s.id)).length;
     const pending = Math.max(0, total - completed);
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     // Monthly average calculation
     const monthPrefix = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}`;
-    const monthEntries = allEntries.filter(e => e.date.startsWith(monthPrefix));
+    const monthEntries = allEntries.filter(e => e.date.startsWith(monthPrefix) && students.some(s => s.id === e.studentId));
     const monthAvg = total > 0 ? Number((monthEntries.length / total).toFixed(1)) : 0;
 
     return {
@@ -141,7 +141,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       rateToday: rate,
       monthAvgDays: monthAvg
     };
-  }, [students, currentDayEntriesMap, config.totalStudents, allEntries, calendarYear, calendarMonth]);
+  }, [students, currentDayEntriesMap, allEntries, calendarYear, calendarMonth]);
 
   // Daily rates map for calendar view
   const dailyRatesMap = useMemo(() => {
