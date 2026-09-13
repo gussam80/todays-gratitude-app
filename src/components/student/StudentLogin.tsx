@@ -9,24 +9,38 @@ interface StudentLoginProps {
 }
 
 export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredStudents }) => {
-  const [grade, setGrade] = useState<number>(1);
-  const [classNum, setClassNum] = useState<number>(2);
-  const [number, setNumber] = useState<number>(15);
+  const [grade, setGrade] = useState<number | ''>('');
+  const [classNum, setClassNum] = useState<number | ''>('');
+  const [number, setNumber] = useState<number | ''>('');
   const [name, setName] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Auto-fill student name if found in registeredStudents for selected grade, class, number
   useEffect(() => {
-    const matched = registeredStudents.find(
-      s => s.grade === grade && s.classNum === classNum && s.number === number
-    );
-    if (matched) {
-      setName(matched.name);
+    if (grade && classNum && number) {
+      const matched = registeredStudents.find(
+        s => s.grade === grade && s.classNum === classNum && s.number === number
+      );
+      if (matched) {
+        setName(matched.name);
+      }
     }
   }, [grade, classNum, number, registeredStudents]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!grade) {
+      setErrorMessage('학년을 선택해 주세요 😊');
+      return;
+    }
+    if (!classNum) {
+      setErrorMessage('반을 선택해 주세요 😊');
+      return;
+    }
+    if (!number) {
+      setErrorMessage('번호를 선택해 주세요 😊');
+      return;
+    }
     if (!name.trim()) {
       setErrorMessage('이름을 입력해 주세요 😊');
       return;
@@ -36,9 +50,9 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
     const studentId = `2026-${grade}-${classNum}-${number}`;
     const student: Student = {
       id: studentId,
-      grade,
-      classNum,
-      number,
+      grade: Number(grade),
+      classNum: Number(classNum),
+      number: Number(number),
       name: name.trim(),
       createdAt: new Date().toISOString()
     };
@@ -68,12 +82,18 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
               </label>
               <select
                 value={grade}
-                onChange={(e) => setGrade(Number(e.target.value))}
-                className="w-full bg-cream-50 border border-stone-200 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400"
+                onChange={(e) => setGrade(e.target.value ? Number(e.target.value) : '')}
+                className={`w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400 ${
+                  !grade ? 'text-stone-400' : 'text-stone-800'
+                }`}
+                required
               >
-                <option value={1}>1학년</option>
-                <option value={2}>2학년</option>
-                <option value={3}>3학년</option>
+                <option value="" disabled className="text-stone-400">학년</option>
+                {[1, 2, 3, 4, 5, 6].map(g => (
+                  <option key={g} value={g} className="text-stone-800 font-medium">
+                    {g}학년
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -83,11 +103,18 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
               </label>
               <select
                 value={classNum}
-                onChange={(e) => setClassNum(Number(e.target.value))}
-                className="w-full bg-cream-50 border border-stone-200 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400"
+                onChange={(e) => setClassNum(e.target.value ? Number(e.target.value) : '')}
+                className={`w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400 ${
+                  !classNum ? 'text-stone-400' : 'text-stone-800'
+                }`}
+                required
               >
-                <option value={1}>1반</option>
-                <option value={2}>2반</option>
+                <option value="" disabled className="text-stone-400">반</option>
+                {Array.from({ length: 15 }, (_, i) => i + 1).map((c) => (
+                  <option key={c} value={c} className="text-stone-800 font-medium">
+                    {c}반
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -97,11 +124,15 @@ export const StudentLogin: React.FC<StudentLoginProps> = ({ onLogin, registeredS
               </label>
               <select
                 value={number}
-                onChange={(e) => setNumber(Number(e.target.value))}
-                className="w-full bg-cream-50 border border-stone-200 rounded-xl px-3 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400"
+                onChange={(e) => setNumber(e.target.value ? Number(e.target.value) : '')}
+                className={`w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-sage-400 focus:border-sage-400 ${
+                  !number ? 'text-stone-400' : 'text-stone-800'
+                }`}
+                required
               >
-                {Array.from({ length: 24 }, (_, i) => i + 1).map((num) => (
-                  <option key={num} value={num}>
+                <option value="" disabled className="text-stone-400">번호</option>
+                {Array.from({ length: 35 }, (_, i) => i + 1).map((num) => (
+                  <option key={num} value={num} className="text-stone-800 font-medium">
                     {num}번
                   </option>
                 ))}
