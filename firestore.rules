@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      // 학교 감사일기: 학생 및 교사의 일기 작성 및 동기화를 허용합니다.
+      allow read, write: if true;
+    }
+  }
+}

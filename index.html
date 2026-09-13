@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>오늘의 감사 - 감사일기 🌱</title>
+  <meta name="description" content="학생들이 매일 감사한 일을 3가지씩 기록하고, AI 격려 코멘트를 받으며, 선생님이 함께 나누는 학교 맞춤형 감사일기 웹앱" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>" />
+
+  <!-- Pretendard Web Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            cream: {
+              50: '#fdfcf9',
+              100: '#faf8f2',
+              200: '#f4ede1',
+              300: '#ede0cd',
+            },
+            sage: {
+              50: '#f3f7f4',
+              100: '#e3ede5',
+              200: '#c5dcc9',
+              300: '#9ec4a5',
+              400: '#75a680',
+              500: '#558a62',
+              600: '#406e4b',
+              700: '#34573d',
+              800: '#284630',
+              900: '#1c3323',
+            },
+            coral: {
+              50: '#fff5f5',
+              100: '#ffe3e3',
+              200: '#ffc9c9',
+              300: '#fca5a5',
+              400: '#f87171',
+              500: '#e55353',
+            }
+          },
+          boxShadow: {
+            'soft': '0 4px 20px -2px rgba(117, 166, 128, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
+            'card': '0 8px 30px rgba(0, 0, 0, 0.05)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel Standalone -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- SheetJS (XLSX) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Firebase SDK (Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c5dcc9;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9ec4a5;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out;
+    }
+    .animate-scale-in {
+      animation: scaleIn 0.2s ease-out;
+    }
+    @keyframes gentleNudge {
+      0%, 100% { transform: translateY(0); }
+      25% { transform: translateY(-4px); }
+      75% { transform: translateY(4px); }
+    }
+    .animate-gentle-nudge {
+      animation: gentleNudge 0.35s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-cream-100 text-stone-800 antialiased min-h-screen selection:bg-sage-200 selection:text-sage-800">
+  <div id="root"></div>
+
+  <!-- Main Standalone Application Script -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- 1. SVG Icons ---
+    const Icon = {
+      Sprout: () => <span className="select-none">🌱</span>,
+      Check: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      CheckCircle: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      Calendar: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      Clock: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      ChevronLeft: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+      ),
+      ChevronRight: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      ),
+      Sparkles: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+        </svg>
+      ),
+      User: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+      ),
+      Users: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      LogOut: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+      ),
+      Lock: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      ),
+      Save: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+        </svg>
+      ),
+      Edit: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+      Upload: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+      ),
+      Download: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      ),
+      Settings: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+      Search: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      ),
+      FileText: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      Lightbulb: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      ),
+      Refresh: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      ),
+      X: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      ),
+      TrendingUp: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+      GraduationCap: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5" />
+        </svg>
+      ),
+      RotateCcw: ({ className = "w-4 h-4" }) => (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      )
+    };
+
+    // --- 2. Data Constants ---
+    const DAILY_QUESTIONS = [
+      "오늘 나를 웃게 만들어 준 사람은 누구였나요? 😄",
+      "오늘 새롭게 배우거나 알게 된 것은 무엇인가요? 📖",
+      "오늘 누군가에게 작은 도움을 받았던 순간은 언제였나요? 🤝",
+      "오늘 내가 스스로 잘했다고 칭찬해주고 싶은 일은 무엇인가요? ⭐",
+      "오늘 먹었던 음식이나 급식 중 가장 맛있었던 것은 무엇인가요? 🍱",
+      "오늘 하늘을 보거나 주변에서 편안함을 느낀 순간이 있었나요? 🌿",
+      "오늘 가족과 함께 나누어 따뜻했던 대화나 행동이 있었나요? 🏡",
+      "힘들었지만 포기하지 않고 끝까지 해낸 일이 있었나요? 💪",
+      "오늘 선생님께 들었던 말 중 힘이 되었던 말은 무엇인가요? 💬",
+      "오늘 나에게 주어진 소소한 물건이나 시간 중 고마웠던 것은 무엇인가요? 🎁"
+    ];
+
+    const INSPIRING_QUOTES = [
+      "작은 감사 하나가 오늘을 조금 더 따뜻하게 만들어 줍니다. 🌱",
+      "행복해서 감사한 것이 아니라, 감사해서 행복해집니다. ✨",
+      "오늘 하루 속 숨겨진 고마운 보물을 찾아보세요. 💎",
+      "나의 작은 감사가 친구와 가족의 마음을 밝혀줍니다. 🌟",
+      "사소한 일상도 감사의 눈으로 바라보면 기적이 됩니다. 🌸"
+    ];
+
+    const GRATITUDE_EXAMPLES = [
+      "친구가 어려운 문제를 친절하게 가르쳐주었어요.",
+      "선생님께서 발표 태도가 좋았다고 칭찬해 주셨어요.",
+      "오늘 점심 급식에 내가 좋아하는 돈가스가 나와 맛있게 먹었어요.",
+      "가족과 저녁 식사를 하며 재미있게 이야기를 나누었어요.",
+      "체육 시간에 넘어진 친구를 일으켜 세워주며 보람을 느꼈어요.",
+      "어려웠던 숙제를 포기하지 않고 끝까지 풀어냈어요."
+    ];
+
+    const SAMPLE_STUDENTS = [];
+
+    // --- 3. Storage Layer Helper ---
+    const STORAGE_KEYS = {
+      STUDENTS: 'todays_gratitude_students',
+      ENTRIES: 'todays_gratitude_entries',
+      NOTES: 'todays_gratitude_notes',
+      CONFIG: 'todays_gratitude_config',
+      LAST_STUDENT: 'todays_gratitude_last_student'
+    };
+
+    function initStorageIfEmpty() {
+      // 자동 정리: 기존 저장된 예시 데이터가 있을 경우 완전 초기화
+      const CLEAN_KEY = 'todays_gratitude_cleaned_v3';
+      if (!localStorage.getItem(CLEAN_KEY)) {
+        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify([]));
+        localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([]));
+        localStorage.removeItem(STORAGE_KEYS.LAST_STUDENT);
+        localStorage.setItem(CLEAN_KEY, 'true');
+      }
+
+      if (!localStorage.getItem(STORAGE_KEYS.STUDENTS)) {
+        localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
+        localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify({
+          year: 2026,
+          grade: 1,
+          classNum: 1,
+          totalStudents: 24,
+          teacherPin: '1234',
+          useFirebase: true,
+          firebaseConfig: {
+            apiKey: "AIzaSyB_ukQBHj2j6D8UkZ-xM6bNzCUPHF67mcw",
+            authDomain: "todays-gratitude.firebaseapp.com",
+            projectId: "todays-gratitude",
+            storageBucket: "todays-gratitude.firebasestorage.app",
+            messagingSenderId: "660452555346",
+            appId: "1:660452555346:web:1f2f1bee4f570dcc3afd8b"
+          }
+        }));
+      } else {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG));
+          if (!parsed.firebaseConfig || !parsed.firebaseConfig.apiKey) {
+            parsed.useFirebase = true;
+            parsed.firebaseConfig = {
+              apiKey: "AIzaSyB_ukQBHj2j6D8UkZ-xM6bNzCUPHF67mcw",
+              authDomain: "todays-gratitude.firebaseapp.com",
+              projectId: "todays-gratitude",
+              storageBucket: "todays-gratitude.firebasestorage.app",
+              messagingSenderId: "660452555346",
+              appId: "1:660452555346:web:1f2f1bee4f570dcc3afd8b"
+            };
+            localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(parsed));
+          }
+        } catch (e) {}
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.ENTRIES)) {
+        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.NOTES)) {
+        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify([]));
+      }
+    }
+
+    // 앱 시작 전 즉시 초기화 실행
+    initStorageIfEmpty();
+
+    // Firebase Firestore Helper
+    function getFirestoreDb(cfg) {
+      if (!cfg || !cfg.useFirebase || !cfg.firebaseConfig || !cfg.firebaseConfig.apiKey || !cfg.firebaseConfig.projectId || !window.firebase) {
+        return null;
+      }
+      try {
+        const appName = 'gratitude_' + cfg.firebaseConfig.projectId;
+        let app = firebase.apps && firebase.apps.find(a => a.name === appName);
+        if (!app) {
+          app = firebase.initializeApp(cfg.firebaseConfig, appName);
+        }
+        return app.firestore();
+      } catch (e) {
+        console.warn('Firebase init error:', e);
+        return null;
+      }
+    }
+
+    // Date Utilities
+    function getTodayString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatKoreanDate(dateStr) {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length !== 3) return dateStr;
+      return `${parseInt(parts[0], 10)}년 ${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일`;
+    }
+
+    function getCalendarGrid(year, month) {
+      const firstDayIndex = new Date(year, month - 1, 1).getDay();
+      const totalDays = new Date(year, month, 0).getDate();
+      const days = [];
+
+      const prevMonthTotalDays = new Date(year, month - 1, 0).getDate();
+      for (let i = firstDayIndex - 1; i >= 0; i--) {
+        const prevDay = prevMonthTotalDays - i;
+        const prevMonth = month === 1 ? 12 : month - 1;
+        const prevYear = month === 1 ? year - 1 : year;
+        days.push({
+          day: prevDay,
+          dateStr: `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(prevDay).padStart(2, '0')}`,
+          isCurrentMonth: false
+        });
+      }
+
+      for (let i = 1; i <= totalDays; i++) {
+        days.push({
+          day: i,
+          dateStr: `${year}-${String(month).padStart(2, '0')}-${String(i).padStart(2, '0')}`,
+          isCurrentMonth: true
+        });
+      }
+
+      const remaining = (7 - (days.length % 7)) % 7;
+      for (let i = 1; i <= remaining; i++) {
+        const nextMonth = month === 12 ? 1 : month + 1;
+        const nextYear = month === 12 ? year + 1 : year;
+        days.push({
+          day: i,
+          dateStr: `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(i).padStart(2, '0')}`,
+          isCurrentMonth: false
+        });
+      }
+      return days;
+    }
+
+    // AI & Keywords
+    function extractKeywords(text) {
+      const categories = [
+        { name: '친구', keywords: ['친구', '짝꿍', '같이', '놀았', '이야기', '도와줬', '함께'] },
+        { name: '가족', keywords: ['엄마', '아빠', '부모님', '동생', '형', '누나', '가족', '집'] },
+        { name: '선생님', keywords: ['선생님', '칭찬', '가르쳐', '수업', '말씀'] },
+        { name: '학교·일상', keywords: ['학교', '교실', '급식', '점심', '체육', '음악', '운동장', '하늘'] },
+        { name: '배움·성장', keywords: ['공부', '새로운', '배웠', '알게', '시험', '문제', '숙제', '책', '해냈'] },
+        { name: '나 자신', keywords: ['스스로', '나', '참았', '끝까지', '노력', '운동', '뿌듯'] }
+      ];
+      const matched = [];
+      for (const cat of categories) {
+        if (cat.keywords.some(k => text.includes(k))) {
+          matched.push(cat.name);
+        }
+      }
+      return matched.length > 0 ? matched.slice(0, 3) : ['일상·감사'];
+    }
+
+    function generateAIComment(g1, g2, g3) {
+      const fullText = `${g1} ${g2} ${g3}`;
+      const keywords = extractKeywords(fullText);
+
+      // Crisis / distress safety detector
+      const distress = ['죽고 싶', '살기 싫', '괴롭힘', '따돌림', '때렸', '자해'];
+      if (distress.some(d => fullText.includes(d))) {
+        return {
+          comment: "오늘 마음이 많이 힘들고 무거운 일이 있었던 것 같아요. 혼자 힘들어하지 말고 믿을 수 있는 선생님이나 어른에게 편하게 이야기해 보세요. 당신의 마음을 언제나 응원해요. 🌱",
+          keywords: ['마음돌봄']
+        };
+      }
+
+      if (keywords.includes('친구')) {
+        return {
+          comment: "함께해 준 친구의 마음을 소중하게 생각하고 있네요. 서로 도와주는 따뜻한 우정이 느껴져요! 💚",
+          keywords
+        };
+      }
+      if (keywords.includes('선생님')) {
+        return {
+          comment: "선생님의 말씀과 칭찬 속에서 긍정적인 힘을 얻었군요. 오늘의 뿌듯한 마음을 소중히 간직해 보세요! 💜",
+          keywords
+        };
+      }
+      if (keywords.includes('가족')) {
+        return {
+          comment: "가족과 함께 나눈 따뜻한 온기가 글 속에 가득 담겨 있네요. 소중한 사람들과의 시간이 큰 힘이 되었을 거예요. 💙",
+          keywords
+        };
+      }
+      if (keywords.includes('배움·성장')) {
+        return {
+          comment: "새로운 것을 배우고 스스로 해내는 과정에서 큰 보람을 찾았군요. 한 걸음씩 성장해가는 모습이 정말 멋집니다! 🧡",
+          keywords
+        };
+      }
+      if (keywords.includes('나 자신')) {
+        return {
+          comment: "스스로 노력하고 잘 견뎌낸 자신을 따뜻하게 격려해 준 하루였네요. 오늘 하루도 수고 많았어요! 🌱",
+          keywords
+        };
+      }
+
+      return {
+        comment: "오늘 하루 속에서 작은 감사들을 세심하게 발견해 낸 모습이 참 좋아요. 내일도 주변의 좋은 순간을 찾아보세요! 🌱",
+        keywords
+      };
+    }
+
+    // --- 학생 입력 맞춤형 감사 문장 동적 제안 생성기 ---
+    function generateSentenceSuggestion(input) {
+      const clean = (input || '').trim().replace(/[.!?~^♡♥★☆\s]+$/g, '');
+      if (!clean) return '예: 오늘 점심 급식에 내가 좋아하는 음식이 나와 맛있게 먹었어요.';
+
+      const NOUNS = [
+        '게임', '그림', '모임', '모둠', '피자', '과자', '의자', '상자', '모자', '감자',
+        '바다', '사이다', '소다', '판다', '바나나', '피아노'
+      ];
+
+      // 1. 끝이 연결어미로 끝난 경우 (예: ~고, ~서, ~며, ~면, ~다가)
+      if (!NOUNS.some(n => clean.endsWith(n)) && /[고며면서니게]$|[^피과모상의감]자$/.test(clean)) {
+        return `예: '${clean} 정말 기분 좋고 감사한 마음이 들었어요.'`;
+      }
+
+      // 2. 끝이 조사로 끝난 경우 (예: ~을/를, ~와/과, ~에, ~으로, ~도)
+      if (/[을를]$/.test(clean)) {
+        if (/밥|급식|음식|반찬|간식|사과|빵|고기|라면|돈가스|피자|과자|치킨|떡볶이/.test(clean)) {
+          return `예: '${clean} 맛있게 먹고 든든하게 하루를 보낼 수 있어서 감사했어요.'`;
+        }
+        if (/체육|피구|축구|수업|공부|숙제|시험|게임|놀이|책|독서|활동/.test(clean)) {
+          return `예: '${clean} 열심히 참여하며 보람찬 시간을 보냈어요.'`;
+        }
+        return `예: '${clean} 소중하게 생각하며 감사한 하루를 보냈어요.'`;
+      }
+      if (/[와과랑]$/.test(clean)) {
+        return `예: '${clean} 함께 즐거운 시간을 보내고 서로 도와주어서 고마웠어요.'`;
+      }
+      if (/[에서]$/.test(clean)) {
+        return `예: '${clean} 새로운 것을 배우고 즐겁게 활동해서 감사했어요.'`;
+      }
+      if (/[에게한테께]$/.test(clean)) {
+        return `예: '${clean} 고마운 마음을 전할 수 있어서 뜻깊었어요.'`;
+      }
+      if (/[이가은는]$/.test(clean)) {
+        return `예: '${clean} 나를 따뜻하게 격려해 주셔서 큰 힘이 되었어요.'`;
+      }
+      if (/[에로도만]$/.test(clean)) {
+        return `예: '${clean} 좋은 일이 생겨서 정말 감사하고 다행이었어요.'`;
+      }
+
+      // 3. 끝 단어별 맞춤 제안 (명사 종결)
+      if (/선물$/.test(clean)) {
+        return `예: '${clean}을(를) 받아 정말 기쁘고 감사한 마음이 들었어요.'`;
+      }
+      if (/밥|급식|음식|반찬|간식|사과|빵|고기|라면|돈가스|피자|과자|치킨|떡볶이|국|찌개|과일|우유|아침|점심|저녁/.test(clean)) {
+        return `예: '${clean}을(를) 맛있게 먹고 힘차게 하루를 보낼 수 있어서 감사했어요.'`;
+      }
+      if (/친구|선생님|엄마|아빠|부모님|동생|형|누나|오빠|가족|짝꿍|할머니|할아버지/.test(clean)) {
+        return `예: '${clean}와(과) 함께 사이좋게 지내고 힘이 되어주어서 감사했어요.'`;
+      }
+      if (/체육|피구|축구|수업|공부|숙제|시험|게임|놀이|책|독서|도서관|음악|미술|운동|달리기/.test(clean)) {
+        return `예: '${clean} 활동에 즐겁게 참여하고 끝까지 해내서 스스로 뿌듯했어요.'`;
+      }
+      if (/날씨|하늘|바람|햇살|햇빛|비|눈|공기/.test(clean)) {
+        return `예: '오늘 상쾌한 ${clean} 덕분에 기분 좋은 하루를 보냈어요.'`;
+      }
+
+      return `예: '${clean} 덕분에 오늘 하루도 즐겁고 감사한 순간이 되었어요.'`;
+    }
+
+    const NOUNS_ENDING_IN_TERMINATIONS = [
+      '게임', '그림', '모임', '모둠', '피자', '과자', '의자', '상자', '모자', '감자',
+      '바다', '사이다', '소다', '판다', '바나나', '피아노'
+    ];
+
+    // --- 감사일기 문장 완성도 및 문맥적 의미 정밀 검사 ---
+    function checkGratitudeQuality(text) {
+      const trimmed = (text || '').trim();
+      if (!trimmed) {
+        return {
+          valid: false,
+          reason: 'empty',
+          message: '내용을 작성해 주세요.',
+          summaryBadge: '💡 단어가 아닌 완성된 문장으로 적어보세요'
+        };
+      }
+
+      const withoutSpaces = trimmed.replace(/\s/g, '');
+      const cleanText = trimmed.replace(/[.!?~^♡♥★☆\s]+$/g, '');
+      const lastChar = cleanText.slice(-1);
+
+      // 1. 자음 또는 모음만 입력 (예: ㅇ, ㅋㅋㅋ, ㅎㅎ, ㄱㄱ, ㅏㅏ)
+      const isOnlyJamo = /^[ㄱ-ㅎㅏ-ㅣ\s\.\,\!\?\~\^\-]+$/.test(trimmed);
+      if (isOnlyJamo) {
+        return {
+          valid: false,
+          reason: 'jamo',
+          message: '자음이나 모음(예: ㅇ, ㅋㅋ)만으로는 감사한 마음을 알기 어려워요. 어떤 일이 고마웠는지 온전한 문장으로 적어볼까요? 😊',
+          suggestion: '예: 짝꿍이 모르는 문제를 친절하게 가르쳐 주었어요.',
+          summaryBadge: '🌱 자음 대신 문장으로 적어보세요'
+        };
+      }
+
+      // 2. 특수문자, 기호, 숫자만 입력
+      const isOnlySymbols = /^[\d\s\.\,\!\?\~\@\#\$\%\^\&\*\(\)\_\+\-\=\[\]\{\}\;\:\'\"\\\/\<\>]+$/.test(trimmed);
+      if (isOnlySymbols) {
+        return {
+          valid: false,
+          reason: 'symbols',
+          message: '기호나 숫자 대신 오늘 감사했던 순간을 글로 표현해 보세요! ✏️',
+          suggestion: '예: 점심 급식에 내가 좋아하는 돈가스가 나와 맛있게 먹었어요.',
+          summaryBadge: '🌱 기호 대신 문장으로 표현해 보세요'
+        };
+      }
+
+      // 3. 같은 문자 연속 도배 (예: aaaaa, 가가가가, 1111, 하하하하)
+      const isRepeatedChar = /^(.)\1{2,}$/.test(withoutSpaces) || /^(.{2})\1+$/.test(withoutSpaces);
+      if (isRepeatedChar) {
+        return {
+          valid: false,
+          reason: 'repeated',
+          message: '같은 글자를 반복하기보다 오늘 있었던 특별한 기억을 천천히 떠올려 보세요! 🌸',
+          suggestion: '예: 체육 시간에 친구들과 피구를 함께해서 즐거웠어요.',
+          summaryBadge: '🌱 반복 글자 대신 오늘 일을 적어보세요'
+        };
+      }
+
+      // 4. 무의미한 자판 나열 및 테스트성 문구
+      const dummyPatterns = [
+        '가나다', '가나다라', '동해물과', '아자차카', '하늘땅',
+        '테스트', '아무거나', '아무말', '쓸게없', '할말없', '그냥적', '그냥씀',
+        '대충적', '대충씀', '모르겠', '기억안', '기억이안', '없다고', '없다니',
+        '패스합', 'qwer', 'asdf', 'zxcv', 'ㅁㄴㅇㄹ', 'ㅂㅈㄷㄱ'
+      ];
+      if (dummyPatterns.some(p => withoutSpaces.includes(p))) {
+        return {
+          valid: false,
+          reason: 'dummy',
+          message: '임의의 글자나 테스트 문구 대신 오늘 실제로 있었던 감사한 일을 진심을 담아 적어보세요! 💡',
+          suggestion: '예: 숙제를 포기하지 않고 끝까지 해내서 스스로 뿌듯했어요.',
+          summaryBadge: '🌱 진심을 담은 감사 문장을 적어보세요'
+        };
+      }
+
+      // 5. 무성의/회피성 단어 (없음, 몰라, 그냥, 귀찮아, pass 등)
+      const dismissiveWords = [
+        '없음', '없다', '없어요', '모름', '몰라', '몰라요',
+        '그냥', '귀찮', '귀찮음', '귀찮아', '패스', 'pass',
+        'none', 'nothing', '싫어', '알아서뭐함', '없는데', 'ㄴㄴ', 'ㅇㅇ', '싫음', '별로'
+      ];
+      const cleanWord = withoutSpaces.toLowerCase();
+      if (dismissiveWords.some(w => cleanWord === w || (cleanWord.length <= 5 && cleanWord.includes(w)))) {
+        return {
+          valid: false,
+          reason: 'dismissive',
+          message: '거창한 일이 아니어도 괜찮아요. 오늘 마신 시원한 물 한 잔, 친구와의 인사처럼 소소하고 작은 일상도 훌륭한 감사가 된답니다! 🌿',
+          suggestion: '예: 오늘 아침 맑은 하늘을 보며 상쾌한 기분이 들었어요.',
+          summaryBadge: '🌱 소소한 일상도 좋은 감사가 돼요'
+        };
+      }
+
+      // 6. 조사로 끝난 문장 (문장이 조사에서 끊김)
+      const particleEndings = ['을', '를', '이', '가', '은', '는', '에', '의', '와', '과', '랑', '로', '으로', '도', '만', '서', '에서', '에게', '한테', '보다', '처럼', '까지', '부터', '조차', '마저', '께'];
+      if (particleEndings.some(p => cleanText.endsWith(p))) {
+        return {
+          valid: false,
+          reason: 'incomplete_ending',
+          message: `문장이 조사('~${lastChar}')에서 멈추었어요. 뒤이어 어떤 일이 일어났거나 어떤 기분이 들었는지 문장 끝까지 완성해 볼까요? 💭`,
+          suggestion: generateSentenceSuggestion(cleanText),
+          summaryBadge: '🌱 문장이 중간에 끊겼어요'
+        };
+      }
+
+      // 7. 연결어미/접속형으로 끝난 문장 (마무리 서술 부재)
+      const conjunctiveEndings = ['고', '며', '면', '으면', '아서', '어서', '해서', '여서', '니까', '으니까', '려고', '으려고', '다가', '자마자', '는데', '은데', '텐데', '지만', '으나', '도록', '게'];
+      if (conjunctiveEndings.some(c => cleanText.endsWith(c))) {
+        return {
+          valid: false,
+          reason: 'incomplete_ending',
+          message: '문장이 이어지다 멈춘 것 같아요. 그래서 어떤 마음이 들었는지 마무리를 지어보세요! 🌿',
+          suggestion: generateSentenceSuggestion(cleanText),
+          summaryBadge: '🌱 문장 마무리를 완성해 보세요'
+        };
+      }
+
+      // 8. 문장이 아닌 경우 (단어/명사구 종결 검사 - '오늘 아침 밥', '체육 시간 피구', '점심 급식 돈가스' 등)
+      const VALID_SENTENCE_ENDINGS = new Set([
+        '다', '요', '음', '슴', '함', '어', '아', '해', '네', '군', '죠', '지', '심', '나', '자', '길'
+      ]);
+      const isEndingInNoun = NOUNS_ENDING_IN_TERMINATIONS.some(noun => cleanText.endsWith(noun));
+      const hasValidTermination = VALID_SENTENCE_ENDINGS.has(lastChar) && !isEndingInNoun;
+
+      if (!hasValidTermination) {
+        return {
+          valid: false,
+          reason: 'not_a_sentence',
+          message: `'${trimmed}'처럼 단어나 명사만 적기보다, 어떤 일이 있었고 어떤 마음이 들었는지 완성된 문장(~했어요, ~했습니다)으로 적어볼까요? ✏️`,
+          suggestion: generateSentenceSuggestion(cleanText),
+          summaryBadge: '🌱 단어 대신 완성된 문장으로 적어보세요'
+        };
+      }
+
+      // 9. 최소 글자수 체크 (공백 제외 6글자 미만)
+      if (withoutSpaces.length < 6) {
+        return {
+          valid: false,
+          reason: 'too_short',
+          message: `'${trimmed}'을(를) 조금만 더 구체적인 완성 문장으로 적어볼까요? (최소 6글자 이상 문장) 🌱`,
+          suggestion: generateSentenceSuggestion(cleanText),
+          summaryBadge: '🌱 문장으로 조금만 더 적어보세요'
+        };
+      }
+
+      // 10. 종결어미가 붙어있으나 서술어 및 감정/행동 표현이 온전한지 검사
+      const predicatesAndSentiments = [
+        '다', '요', '음', '임', '어', '네', '군', '지', '죠', '함', '됨', '봄', '줌',
+        '맛있', '좋았', '좋아', '고맙', '고마', '감사', '뿌듯', '신났', '신나', '재미',
+        '즐거', '행복', '보람', '편안', '따뜻', '예뻤', '멋졌', '해냈', '배웠', '도와',
+        '도움', '먹었', '마셨', '놀았', '웃었', '칭찬', '격려', '응원', '이겼', '쉬었',
+        '만났', '풀었', '받았', '줬다', '주셨', '나눴', '성공', '다행', '든든', '흐뭇',
+        '했', '됐', '봤', '왔', '갔', '나누', '함께'
+      ];
+      const hasValidPredicate = predicatesAndSentiments.some(p => withoutSpaces.includes(p));
+      if (!hasValidPredicate) {
+        return {
+          valid: false,
+          reason: 'no_predicate',
+          message: '단어 나열 대신 어떤 일이 있었는지 구체적인 행동이나 느낌을 담아 문장을 완성해 보세요! 💭',
+          suggestion: generateSentenceSuggestion(cleanText),
+          summaryBadge: '🌱 상황이나 느낌을 문장으로 적어보세요'
+        };
+      }
+
+      return {
+        valid: true,
+        message: '따뜻하고 정성스러운 감사 문장이에요!',
+        summaryBadge: '✓ 따뜻하고 정성스러운 감사 문장이에요!'
+      };
+    }
+
+    function validateAllGratitudes(g1, g2, g3) {
+      const q1 = checkGratitudeQuality(g1);
+      if (!q1.valid) {
+        const title = q1.reason === 'not_a_sentence'
+          ? '첫 번째 감사를 완성된 문장으로 적어볼까요? ✏️'
+          : '첫 번째 감사 질문을 다시 한번 생각해 볼까요? 💭';
+        return {
+          field: 1,
+          title,
+          message: q1.message,
+          suggestion: q1.suggestion || generateSentenceSuggestion(g1)
+        };
+      }
+
+      const q2 = checkGratitudeQuality(g2);
+      if (!q2.valid) {
+        const title = q2.reason === 'not_a_sentence'
+          ? '두 번째 감사를 완성된 문장으로 적어볼까요? ✏️'
+          : '두 번째 감사 질문을 다시 한번 생각해 볼까요? 💭';
+        return {
+          field: 2,
+          title,
+          message: q2.message,
+          suggestion: q2.suggestion || generateSentenceSuggestion(g2)
+        };
+      }
+
+      const q3 = checkGratitudeQuality(g3);
+      if (!q3.valid) {
+        const title = q3.reason === 'not_a_sentence'
+          ? '세 번째 감사를 완성된 문장으로 적어볼까요? ✏️'
+          : '세 번째 감사 질문을 다시 한번 생각해 볼까요? 💭';
+        return {
+          field: 3,
+          title,
+          message: q3.message,
+          suggestion: q3.suggestion || generateSentenceSuggestion(g3)
+        };
+      }
+
+      // 3가지 내용 중복 검사
+      const t1 = (g1 || '').trim().replace(/\s/g, '');
+      const t2 = (g2 || '').trim().replace(/\s/g, '');
+      const t3 = (g3 || '').trim().replace(/\s/g, '');
+
+      if (t1 === t2 || t2 === t3 || t1 === t3) {
+        return {
+          field: (t1 === t2) ? 2 : 3,
+          title: '서로 다른 3가지 감사를 찾아볼까요? ✨',
+          message: '각 질문마다 서로 다른 감사한 순간을 하나씩 적어주세요. 친구, 가족, 선생님, 학교생활 등 다양한 고마움을 떠올려 보세요!',
+          suggestion: '예: 1번은 친구 이야기, 2번은 맛있는 음식이나 가족 이야기, 3번은 스스로 칭찬해줄 일'
+        };
+      }
+
+      return null;
+    }
+
+    // --- 4. Main React Component ---
+    function App() {
+      // Initialize local storage
+      useEffect(() => {
+        initStorageIfEmpty();
+      }, []);
+
+      const [isTeacherMode, setIsTeacherMode] = useState(false);
+      const [isTeacherLoginOpen, setIsTeacherLoginOpen] = useState(false);
+      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+      const [teacherPinInput, setTeacherPinInput] = useState('');
+      const [pinError, setPinError] = useState('');
+
+      const [currentStudent, setCurrentStudent] = useState(() => {
+        const saved = localStorage.getItem(STORAGE_KEYS.LAST_STUDENT);
+        return saved ? JSON.parse(saved) : null;
+      });
+
+      // Storage states
+      const [students, setStudents] = useState(() => {
+        const raw = localStorage.getItem(STORAGE_KEYS.STUDENTS);
+        return raw ? JSON.parse(raw) : [];
+      });
+
+      const [entries, setEntries] = useState(() => {
+        const raw = localStorage.getItem(STORAGE_KEYS.ENTRIES);
+        return raw ? JSON.parse(raw) : [];
+      });
+
+      const [notes, setNotes] = useState(() => {
+        const raw = localStorage.getItem(STORAGE_KEYS.NOTES);
+        return raw ? JSON.parse(raw) : [];
+      });
+
+      const [config, setConfig] = useState(() => {
+        const raw = localStorage.getItem(STORAGE_KEYS.CONFIG);
+        return raw ? JSON.parse(raw) : { year: 2026, grade: 1, classNum: 1, totalStudents: 24, teacherPin: '1234' };
+      });
+
+      // Firebase states in App
+      const [firebaseSnippetInput, setFirebaseSnippetInput] = useState('');
+      const [copiedLink, setCopiedLink] = useState(false);
+      const [copiedRules, setCopiedRules] = useState(false);
+
+      // Firebase Cloud Sync on mount / config change
+      useEffect(() => {
+        const db = getFirestoreDb(config);
+        if (!db) return;
+
+        db.collection('students').get().then(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            setStudents(list);
+            localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(list));
+          }
+        }).catch(err => console.warn('Firestore load students error:', err));
+
+        db.collection('gratitude_entries').get().then(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            setEntries(list);
+            localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(list));
+          }
+        }).catch(err => console.warn('Firestore load entries error:', err));
+
+        db.collection('teacher_notes').get().then(snap => {
+          if (!snap.empty) {
+            const list = [];
+            snap.forEach(d => list.push(d.data()));
+            setNotes(list);
+            localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(list));
+          }
+        }).catch(err => console.warn('Firestore load notes error:', err));
+      }, [config]);
+
+      // Toasts
+      const [toasts, setToasts] = useState([]);
+      const showToast = (message, type = 'info') => {
+        const id = Date.now().toString();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+      };
+
+      // Student Form States
+      const [loginGrade, setLoginGrade] = useState(1);
+      const [loginClassNum, setLoginClassNum] = useState(1);
+      const [loginNumber, setLoginNumber] = useState(1);
+      const [loginName, setLoginName] = useState('');
+
+      // Sync student name when number/grade/class changes
+      useEffect(() => {
+        const matched = students.find(s => s.grade === loginGrade && s.classNum === loginClassNum && s.number === loginNumber);
+        if (matched) setLoginName(matched.name);
+        else setLoginName('');
+      }, [loginGrade, loginClassNum, loginNumber, students]);
+
+      // Calendar & Modals
+      const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+      const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth() + 1);
+      const [selectedDate, setSelectedDate] = useState(() => getTodayString());
+      const [modalMode, setModalMode] = useState(null); // 'write' | 'detail' | null
+      const [diaryG1, setDiaryG1] = useState('');
+      const [diaryG2, setDiaryG2] = useState('');
+      const [diaryG3, setDiaryG3] = useState('');
+      const [validationError, setValidationError] = useState(null);
+
+      // Daily Inspiration Question index
+      const [questionIdx, setQuestionIdx] = useState(() => (new Date().getDate() - 1) % DAILY_QUESTIONS.length);
+      const [quoteIdx, setQuoteIdx] = useState(() => (new Date().getDate() - 1) % INSPIRING_QUOTES.length);
+
+      // Teacher Dashboard States
+      const [teacherGrade, setTeacherGrade] = useState(1);
+      const [teacherClassNum, setTeacherClassNum] = useState(1);
+      const [teacherSelectedDate, setTeacherSelectedDate] = useState(() => getTodayString());
+      const [teacherViewMode, setTeacherViewMode] = useState('roster'); // 'roster' | 'calendar'
+      const [searchTerm, setSearchTerm] = useState('');
+      const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'completed' | 'pending'
+      const [selectedStudentForModal, setSelectedStudentForModal] = useState(null);
+      const [teacherNoteText, setTeacherNoteText] = useState('');
+      const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+      const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+      const [isRosterUploadOpen, setIsRosterUploadOpen] = useState(false);
+      const [isExportOpen, setIsExportOpen] = useState(false);
+      const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+      // 전체 완전 초기화 (학생 명단 + 모든 일기 + 메모)
+      const handleResetAll = () => {
+        if (confirm('⚠️ [주의: 모든 데이터 완전 초기화]\n\n저장된 모든 학생 명단, 작성된 감사일기, 교사 지도 메모가 영구적으로 삭제됩니다.\n\n정말 모든 데이터를 깨끗하게 리셋하시겠습니까?')) {
+          localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify([]));
+          localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([]));
+          localStorage.removeItem(STORAGE_KEYS.LAST_STUDENT);
+          setEntries([]);
+          setNotes([]);
+          setStudents([]);
+          setCurrentStudent(null);
+          setIsResetModalOpen(false);
+
+          const db = getFirestoreDb(config);
+          if (db) {
+            db.collection('students').get().then(s => s.forEach(d => d.ref.delete())).catch(console.warn);
+            db.collection('gratitude_entries').get().then(s => s.forEach(d => d.ref.delete())).catch(console.warn);
+            db.collection('teacher_notes').get().then(s => s.forEach(d => d.ref.delete())).catch(console.warn);
+          }
+
+          showToast('모든 데이터가 깨끗하게 리셋되었습니다. 🌱', 'success');
+        }
+      };
+
+      // 일기 및 메모만 초기화 (학생 명단 유지)
+      const handleResetDiariesOnly = () => {
+        if (confirm('📝 [감사일기 및 메모만 초기화]\n\n등록된 학생 명단(이름, 번호)은 그대로 유지하고, 학생들이 작성한 일기와 교사 메모만 모두 비웁니다.\n\n진행하시겠습니까?')) {
+          localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify([]));
+          setEntries([]);
+          setNotes([]);
+          setIsResetModalOpen(false);
+
+          const db = getFirestoreDb(config);
+          if (db) {
+            db.collection('gratitude_entries').get().then(s => s.forEach(d => d.ref.delete())).catch(console.warn);
+            db.collection('teacher_notes').get().then(s => s.forEach(d => d.ref.delete())).catch(console.warn);
+          }
+
+          showToast('감사일기와 교사 메모가 비워졌습니다. (학생 명단 유지) 🌱', 'success');
+        }
+      };
+
+      // Save Student Login
+      const handleStudentLoginSubmit = (e) => {
+        e.preventDefault();
+        if (!loginName.trim()) {
+          showToast('이름을 입력해 주세요 😊', 'warning');
+          return;
+        }
+        const studentObj = {
+          id: `${config.year}-${loginGrade}-${loginClassNum}-${loginNumber}`,
+          grade: loginGrade,
+          classNum: loginClassNum,
+          number: loginNumber,
+          name: loginName.trim()
+        };
+        setCurrentStudent(studentObj);
+        localStorage.setItem(STORAGE_KEYS.LAST_STUDENT, JSON.stringify(studentObj));
+
+        // 학생 명단에 추가 및 저장
+        setStudents(prev => {
+          const idx = prev.findIndex(s => s.id === studentObj.id);
+          const updated = [...prev];
+          if (idx >= 0) updated[idx] = studentObj;
+          else updated.push(studentObj);
+          localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(updated));
+          return updated;
+        });
+
+        const db = getFirestoreDb(config);
+        if (db) {
+          db.collection('students').doc(studentObj.id).set(studentObj, { merge: true }).catch(console.warn);
+        }
+
+        showToast(`${studentObj.name} 학생, 환영해요! 🌱`, 'success');
+      };
+
+      const handleStudentLogout = () => {
+        localStorage.removeItem(STORAGE_KEYS.LAST_STUDENT);
+        setCurrentStudent(null);
+        showToast('학생 정보가 변경되었습니다.', 'info');
+      };
+
+      // Student Diary Write & Detail
+      const studentEntriesMap = useMemo(() => {
+        if (!currentStudent) return new Map();
+        const map = new Map();
+        entries.filter(e => e.studentId === currentStudent.id).forEach(e => map.set(e.date, e));
+        return map;
+      }, [entries, currentStudent]);
+
+      const isTodayCompleted = studentEntriesMap.has(getTodayString());
+
+      const handleSelectDate = (dStr) => {
+        setSelectedDate(dStr);
+        const existing = studentEntriesMap.get(dStr);
+        if (existing) {
+          setDiaryG1(existing.gratitude1);
+          setDiaryG2(existing.gratitude2);
+          setDiaryG3(existing.gratitude3);
+          setModalMode('detail');
+        } else {
+          setDiaryG1('');
+          setDiaryG2('');
+          setDiaryG3('');
+          setValidationError(null);
+          setModalMode('write');
+        }
+      };
+
+      const handleSaveDiary = (e) => {
+        e.preventDefault();
+        const validation = validateAllGratitudes(diaryG1, diaryG2, diaryG3);
+        if (validation) {
+          setValidationError(validation);
+          return;
+        }
+        setValidationError(null);
+
+        const ai = generateAIComment(diaryG1, diaryG2, diaryG3);
+        const entryId = `${currentStudent.id}_${selectedDate}`;
+        const existing = studentEntriesMap.get(selectedDate);
+
+        const newEntry = {
+          id: entryId,
+          studentId: currentStudent.id,
+          date: selectedDate,
+          gratitude1: diaryG1.trim(),
+          gratitude2: diaryG2.trim(),
+          gratitude3: diaryG3.trim(),
+          aiComment: ai.comment,
+          keywords: ai.keywords,
+          createdAt: existing ? existing.createdAt : new Date().toISOString(),
+          firstModifiedAt: existing ? (existing.firstModifiedAt || new Date().toISOString()) : undefined,
+          updatedAt: new Date().toISOString()
+        };
+
+        const updated = entries.filter(e => e.id !== entryId);
+        updated.push(newEntry);
+        setEntries(updated);
+        localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(updated));
+
+        const db = getFirestoreDb(config);
+        if (db) {
+          db.collection('gratitude_entries').doc(newEntry.id).set(newEntry, { merge: true }).catch(console.warn);
+        }
+
+        // Confetti celebration
+        if (window.confetti) {
+          window.confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
+        }
+
+        showToast('오늘의 감사일기가 저장되었어요! 🌱', 'success');
+        setModalMode('detail');
+      };
+
+      // Teacher Login
+      const handleTeacherLogin = (e) => {
+        e.preventDefault();
+        if (teacherPinInput.trim() === (config.teacherPin || '1234')) {
+          setPinError('');
+          setTeacherPinInput('');
+          setIsTeacherLoginOpen(false);
+          setIsTeacherMode(true);
+          showToast('선생님 대시보드에 입장했습니다 👩‍🏫', 'success');
+        } else {
+          setPinError('비밀번호가 일치하지 않습니다.');
+        }
+      };
+
+      // Teacher Stats
+      const teacherStudents = useMemo(() => {
+        return students.filter(s => s.grade === teacherGrade && s.classNum === teacherClassNum).sort((a, b) => a.number - b.number);
+      }, [students, teacherGrade, teacherClassNum]);
+
+      const teacherEntriesMap = useMemo(() => {
+        const map = new Map();
+        entries.filter(e => e.date === teacherSelectedDate).forEach(e => map.set(e.studentId, e));
+        return map;
+      }, [entries, teacherSelectedDate]);
+
+      const teacherNotesMap = useMemo(() => {
+        const map = new Map();
+        notes.filter(n => n.date === teacherSelectedDate).forEach(n => map.set(n.studentId, n));
+        return map;
+      }, [notes, teacherSelectedDate]);
+
+      const teacherStats = useMemo(() => {
+        const total = teacherStudents.length || config.totalStudents || 25;
+        const completed = teacherStudents.filter(s => teacherEntriesMap.has(s.id)).length;
+        const pending = Math.max(0, total - completed);
+        const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        const monthEntries = entries.filter(e => e.date.startsWith(monthPrefix) && teacherStudents.some(s => s.id === e.studentId));
+        const monthAvg = total > 0 ? Number((monthEntries.length / total).toFixed(1)) : 0;
+
+        return { total, completed, pending, rate, monthAvg };
+      }, [teacherStudents, teacherEntriesMap, config, entries, currentYear, currentMonth]);
+
+      // Save Teacher Note
+      const handleSaveNote = (studentId) => {
+        const noteId = `${studentId}_${teacherSelectedDate}`;
+        const newNote = {
+          id: noteId,
+          studentId,
+          date: teacherSelectedDate,
+          note: teacherNoteText.trim(),
+          updatedAt: new Date().toISOString()
+        };
+        const updated = notes.filter(n => n.id !== noteId);
+        if (teacherNoteText.trim()) updated.push(newNote);
+        setNotes(updated);
+        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(updated));
+
+        const db = getFirestoreDb(config);
+        if (db) {
+          if (teacherNoteText.trim()) {
+            db.collection('teacher_notes').doc(newNote.id).set(newNote, { merge: true }).catch(console.warn);
+          } else {
+            db.collection('teacher_notes').doc(noteId).delete().catch(console.warn);
+          }
+        }
+
+        showToast('교사 비공개 메모가 저장되었습니다.', 'info');
+      };
+
+      // Export to Excel
+      const handleExportExcel = () => {
+        if (!window.XLSX) {
+          showToast('엑셀 모듈이 로드되지 않았습니다.', 'error');
+          return;
+        }
+        const rows = teacherStudents.map(s => {
+          const entry = teacherEntriesMap.get(s.id);
+          const note = teacherNotesMap.get(s.id);
+          return {
+            '날짜': teacherSelectedDate,
+            '학년': s.grade,
+            '반': s.classNum,
+            '번호': s.number,
+            '이름': s.name,
+            '작성여부': entry ? '완료' : '미작성',
+            '감사 1': entry ? entry.gratitude1 : '',
+            '감사 2': entry ? entry.gratitude2 : '',
+            '감사 3': entry ? entry.gratitude3 : '',
+            'AI 격려 코멘트': entry ? entry.aiComment : '',
+            '감사 키워드': entry ? (entry.keywords || []).join(', ') : '',
+            '교사 비공개 메모': note ? note.note : ''
+          };
+        });
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '학급감사일기');
+        XLSX.writeFile(wb, `감사일기_${teacherSelectedDate}_${teacherGrade}학년${teacherClassNum}반.xlsx`);
+        showToast('엑셀 파일이 다운로드되었습니다! 📥', 'success');
+        setIsExportOpen(false);
+      };
+
+      // Student Habit Statistics
+      const studentStats = useMemo(() => {
+        if (!currentStudent) return { monthCount: 0, totalGratitudes: 0, streak: 0 };
+        const monthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+        const monthEntries = entries.filter(e => e.studentId === currentStudent.id && e.date.startsWith(monthPrefix));
+        return {
+          monthCount: monthEntries.length,
+          totalGratitudes: monthEntries.length * 3,
+          streak: monthEntries.length > 0 ? Math.min(monthEntries.length, 5) : 0
+        };
+      }, [currentStudent, entries, currentYear, currentMonth]);
+
+      return (
+        <div className="min-h-screen flex flex-col font-sans">
+          {/* Header */}
+          <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-sm">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setIsTeacherMode(false)}>
+                <div className="w-10 h-10 rounded-2xl bg-sage-100 border border-sage-200 flex items-center justify-center text-xl shadow-inner select-none">
+                  🌱
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h1 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
+                      오늘의 감사 - 감사일기
+                    </h1>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sage-500 text-white">
+                      {isTeacherMode ? '교사용' : '학교용'}
+                    </span>
+                  </div>
+                  <p className="hidden sm:block text-xs text-stone-500">
+                    오늘 하루, 고마웠던 순간을 찾아보세요
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:gap-3">
+                {isTeacherMode ? (
+                  <>
+                    <button
+                      onClick={() => setIsResetModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-rose-200 text-rose-700 bg-rose-50/70 hover:bg-rose-100 flex items-center gap-1.5 transition shadow-xs"
+                      title="데이터 전체 리셋"
+                    >
+                      <Icon.RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                      <span>전체 리셋</span>
+                    </button>
+                    <button
+                      onClick={() => setIsSettingsOpen(true)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1"
+                    >
+                      <Icon.Settings className="w-3.5 h-3.5" />
+                      <span>학급 설정</span>
+                    </button>
+                    <button
+                      onClick={() => setIsTeacherMode(false)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-sage-100 text-sage-800 hover:bg-sage-200 flex items-center gap-1.5"
+                    >
+                      <Icon.GraduationCap className="w-4 h-4" />
+                      <span>학생 화면으로</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {currentStudent && (
+                      <div className="flex items-center gap-2 bg-sage-50 px-2.5 py-1.5 rounded-xl border border-sage-200 text-xs sm:text-sm font-semibold text-sage-900">
+                        <Icon.User className="w-3.5 h-3.5 text-sage-600" />
+                        <span>{currentStudent.grade}학년 {currentStudent.classNum}반 {currentStudent.number}번</span>
+                        <span className="font-bold text-stone-800">{currentStudent.name}</span>
+                        <button
+                          onClick={handleStudentLogout}
+                          title="학생 변경 / 로그아웃"
+                          className="ml-1 text-stone-400 hover:text-stone-700 p-0.5 rounded hover:bg-sage-200 transition"
+                        >
+                          <Icon.LogOut className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setIsTeacherLoginOpen(true)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Icon.Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>교사 전용</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* Main Area */}
+          <main className="flex-1 pb-16">
+            {isTeacherMode ? (
+              /* --- TEACHER DASHBOARD --- */
+              <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+                {/* Top Filter Bar */}
+                <div className="bg-white rounded-3xl p-5 border border-stone-100 shadow-soft flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="text-xl font-bold text-stone-900 flex items-center gap-2">
+                      <span>감사일기 교사 대시보드</span>
+                      <span className="text-xs bg-sage-100 text-sage-800 px-2.5 py-0.5 rounded-full font-bold">
+                        {teacherGrade}학년 {teacherClassNum}반
+                      </span>
+                    </h2>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={teacherGrade}
+                        onChange={(e) => setTeacherGrade(Number(e.target.value))}
+                        className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
+                      >
+                        <option value={1}>1학년</option>
+                        <option value={2}>2학년</option>
+                        <option value={3}>3학년</option>
+                      </select>
+                      <select
+                        value={teacherClassNum}
+                        onChange={(e) => setTeacherClassNum(Number(e.target.value))}
+                        className="bg-cream-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-stone-800"
+                      >
+                        <option value={1}>1반</option>
+                        <option value={2}>2반</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1 bg-cream-50 px-2 py-1 rounded-xl border border-stone-200 text-xs">
+                      <input
+                        type="date"
+                        value={teacherSelectedDate}
+                        onChange={(e) => setTeacherSelectedDate(e.target.value)}
+                        className="bg-transparent border-0 font-bold text-stone-800 text-xs cursor-pointer focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setTeacherSelectedDate(getTodayString())}
+                        className="text-[11px] font-bold text-sage-700 bg-sage-100 px-2 py-0.5 rounded hover:bg-sage-200"
+                      >
+                        오늘
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsExportOpen(true)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-stone-200 text-stone-700 hover:bg-stone-50 flex items-center gap-1.5"
+                    >
+                      <Icon.Download className="w-3.5 h-3.5" />
+                      <span>엑셀 다운로드</span>
+                    </button>
+                    <button
+                      onClick={() => setIsResetModalOpen(true)}
+                      className="px-3 py-2 rounded-xl text-xs font-semibold border border-rose-200 text-rose-700 bg-rose-50/70 hover:bg-rose-100 flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      title="데이터 전체 리셋"
+                    >
+                      <Icon.RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                      <span>전체 리셋</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="bg-white rounded-2xl p-4 border border-stone-100 shadow-soft">
+                    <span className="text-xs text-stone-400 font-medium">전체 학생</span>
+                    <div className="text-2xl font-bold text-stone-800 mt-1">{teacherStats.total}명</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-soft">
+                    <span className="text-xs text-emerald-600 font-medium">작성 완료</span>
+                    <div className="text-2xl font-bold text-emerald-700 mt-1">{teacherStats.completed}명</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-stone-100 shadow-soft">
+                    <span className="text-xs text-stone-500 font-medium">미작성</span>
+                    <div className="text-2xl font-bold text-stone-600 mt-1">{teacherStats.pending}명</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-sage-100 shadow-soft">
+                    <span className="text-xs text-sage-600 font-medium">오늘 작성률</span>
+                    <div className="text-2xl font-bold text-sage-800 mt-1">{teacherStats.rate}%</div>
+                  </div>
+                  <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-soft col-span-2 sm:col-span-1">
+                    <span className="text-xs text-amber-700 font-medium">이달 평균 작성</span>
+                    <div className="text-2xl font-bold text-amber-800 mt-1">{teacherStats.monthAvg}일</div>
+                  </div>
+                </div>
+
+                {/* Search & Roster Table */}
+                <div className="bg-white rounded-3xl border border-stone-100 shadow-soft overflow-hidden">
+                  <div className="p-4 border-b border-stone-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-cream-50/50">
+                    <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-stone-200">
+                      <button
+                        onClick={() => setFilterStatus('all')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${filterStatus === 'all' ? 'bg-stone-800 text-white' : 'text-stone-600'}`}
+                      >
+                        전체 ({teacherStudents.length})
+                      </button>
+                      <button
+                        onClick={() => setFilterStatus('completed')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${filterStatus === 'completed' ? 'bg-emerald-600 text-white' : 'text-emerald-700'}`}
+                      >
+                        ✓ 완료 ({teacherStats.completed})
+                      </button>
+                      <button
+                        onClick={() => setFilterStatus('pending')}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${filterStatus === 'pending' ? 'bg-stone-600 text-white' : 'text-stone-600'}`}
+                      >
+                        미작성 ({teacherStats.pending})
+                      </button>
+                    </div>
+
+                    <div className="relative min-w-[200px]">
+                      <Icon.Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="이름 또는 번호 검색"
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-stone-200 rounded-xl text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-sage-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-stone-100 bg-stone-50 text-stone-500 text-xs font-bold uppercase">
+                          <th className="py-3 px-4 text-center w-16">번호</th>
+                          <th className="py-3 px-4">이름</th>
+                          <th className="py-3 px-4 text-center">작성 여부</th>
+                          <th className="py-3 px-4">감사 요약</th>
+                          <th className="py-3 px-4 text-center">교사 메모</th>
+                          <th className="py-3 px-4 text-right">상세 확인</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {(() => {
+                          const filtered = teacherStudents.filter(s => {
+                            const isDone = teacherEntriesMap.has(s.id);
+                            if (filterStatus === 'completed' && !isDone) return false;
+                            if (filterStatus === 'pending' && isDone) return false;
+                            if (searchTerm.trim()) {
+                              const t = searchTerm.trim().toLowerCase();
+                              return s.name.toLowerCase().includes(t) || String(s.number) === t;
+                            }
+                            return true;
+                          });
+
+                          if (filtered.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={6} className="py-12 text-center text-stone-400 text-xs sm:text-sm">
+                                  {teacherStudents.length === 0
+                                    ? '등록된 학생이 없습니다. 학생이 일기를 처음 작성할 때 자동 등록되거나, 상단 [명단 일괄 업로드]로 등록할 수 있습니다.'
+                                    : '검색 및 필터 조건에 해당하는 학생이 없습니다.'}
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return filtered.map(student => {
+                            const entry = teacherEntriesMap.get(student.id);
+                            const note = teacherNotesMap.get(student.id);
+                            const isDone = !!entry;
+
+                            return (
+                              <tr key={student.id} className="hover:bg-cream-50/60 transition">
+                                <td className="py-3 px-4 text-center font-semibold text-stone-600">{student.number}</td>
+                                <td className="py-3 px-4 font-bold text-stone-800">{student.name}</td>
+                                <td className="py-3 px-4 text-center">
+                                  {isDone ? (
+                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                      <Icon.CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                      완료
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-stone-400 bg-stone-50 px-2.5 py-1 rounded-full border border-stone-200">
+                                      미작성
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-stone-600 text-xs truncate max-w-xs">
+                                  {isDone ? `"${entry.gratitude1}"` : '-'}
+                                </td>
+                                <td className="py-3 px-4 text-center">
+                                  {note && note.note ? (
+                                    <span className="text-[11px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                                      메모있음
+                                    </span>
+                                  ) : (
+                                    <span className="text-stone-300">-</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedStudentForModal(student);
+                                      setTeacherNoteText(note ? note.note : '');
+                                      setIsDetailModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl text-xs font-medium border border-stone-200 text-stone-700 hover:bg-stone-50"
+                                  >
+                                    일기 보기
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : !currentStudent ? (
+              /* --- STUDENT LOGIN SCREEN --- */
+              <div className="min-h-[75vh] flex items-center justify-center px-4 py-8">
+                <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-card border border-stone-100 animate-scale-in">
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 bg-sage-50 border border-sage-200 rounded-3xl flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
+                      🌱
+                    </div>
+                    <h2 className="text-2xl font-bold text-stone-900">오늘의 감사 - 감사일기</h2>
+                    <p className="text-sm text-stone-500 mt-1">시작하기 전에 학생 정보를 확인해 주세요</p>
+                  </div>
+
+                  <form onSubmit={handleStudentLoginSubmit} className="space-y-4">
+                    <div className="grid grid-cols-3 gap-2.5">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 mb-1">학년</label>
+                        <select
+                          value={loginGrade}
+                          onChange={(e) => setLoginGrade(Number(e.target.value))}
+                          className="w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold text-stone-800"
+                        >
+                          <option value={1}>1학년</option>
+                          <option value={2}>2학년</option>
+                          <option value={3}>3학년</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 mb-1">반</label>
+                        <select
+                          value={loginClassNum}
+                          onChange={(e) => setLoginClassNum(Number(e.target.value))}
+                          className="w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold text-stone-800"
+                        >
+                          <option value={1}>1반</option>
+                          <option value={2}>2반</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-600 mb-1">번호</label>
+                        <select
+                          value={loginNumber}
+                          onChange={(e) => setLoginNumber(Number(e.target.value))}
+                          className="w-full bg-cream-50 border border-stone-200 rounded-xl px-2 py-2.5 text-sm font-semibold text-stone-800"
+                        >
+                          {Array.from({ length: 24 }, (_, i) => i + 1).map(n => (
+                            <option key={n} value={n}>{n}번</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-stone-600 mb-1">이름</label>
+                      <input
+                        type="text"
+                        value={loginName}
+                        onChange={(e) => setLoginName(e.target.value)}
+                        placeholder="이름을 입력하세요"
+                        className="w-full bg-cream-50 border border-stone-200 rounded-xl px-4 py-3 text-sm font-bold text-stone-900 focus:ring-2 focus:ring-sage-400"
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full py-3.5 rounded-2xl bg-sage-600 hover:bg-sage-700 text-white font-bold text-base shadow-soft transition flex items-center justify-center gap-2 mt-4"
+                    >
+                      <Icon.Sparkles className="w-5 h-5 text-amber-300" />
+                      <span>감사일기 쓰러 가기</span>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              /* --- STUDENT HOME DASHBOARD --- */
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+                {/* Greeting Banner */}
+                <div className="bg-gradient-to-r from-sage-500 to-emerald-600 rounded-3xl p-6 text-white shadow-soft flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-sage-100 text-xs sm:text-sm font-medium">
+                      <span>{currentStudent.grade}학년 {currentStudent.classNum}반 {currentStudent.number}번</span>
+                      <span>•</span>
+                      <span>{currentStudent.name} 학생</span>
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-bold mt-1 tracking-tight">
+                      오늘도 감사한 일을 찾아볼까요? 🌱
+                    </h2>
+                    <p className="text-xs sm:text-sm text-sage-100/90 mt-1">
+                      작은 감사 세 가지로 오늘 하루를 따뜻하게 물들여 보세요.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const today = getTodayString();
+                      setSelectedDate(today);
+                      const ex = studentEntriesMap.get(today);
+                      if (ex) {
+                        setDiaryG1(ex.gratitude1);
+                        setDiaryG2(ex.gratitude2);
+                        setDiaryG3(ex.gratitude3);
+                      } else {
+                        setDiaryG1('');
+                        setDiaryG2('');
+                        setDiaryG3('');
+                      }
+                      setValidationError(null);
+                      setModalMode('write');
+                    }}
+                    className="bg-white hover:bg-cream-50 text-stone-800 font-bold px-4 py-2.5 rounded-2xl text-sm shadow-sm flex items-center gap-2 whitespace-nowrap transition"
+                  >
+                    <Icon.Edit className="w-4 h-4 text-sage-600" />
+                    <span className="text-stone-800 font-bold">감사일기 쓰기</span>
+                  </button>
+                </div>
+
+                {/* Reminder if today unwritten */}
+                {!isTodayCompleted && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 text-amber-900">
+                    <div className="flex items-center gap-2 text-xs sm:text-sm font-medium">
+                      <span className="text-base">🌱</span>
+                      <span>오늘의 감사일기를 아직 작성하지 않았어요. 여유 있을 때 편하게 적어보세요.</span>
+                    </div>
+                    <button
+                      onClick={() => handleSelectDate(getTodayString())}
+                      className="text-xs font-bold text-amber-800 bg-amber-200 hover:bg-amber-300 px-3 py-1.5 rounded-xl whitespace-nowrap"
+                    >
+                      작성하기 ✏️
+                    </button>
+                  </div>
+                )}
+
+                {/* Inspiration Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-3xl p-5 border border-amber-200/80 shadow-soft flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2 text-xs font-bold text-amber-800">
+                        <span className="flex items-center gap-1.5"><Icon.Lightbulb className="w-4 h-4 text-amber-600" />오늘의 생각 질문</span>
+                        <button
+                          onClick={() => setQuestionIdx((prev) => (prev + 1) % DAILY_QUESTIONS.length)}
+                          className="flex items-center gap-1 text-[11px] text-amber-700 hover:bg-amber-100/70 px-2 py-0.5 rounded"
+                        >
+                          <Icon.Refresh className="w-3 h-3" /> 다른 질문
+                        </button>
+                      </div>
+                      <p className="text-base sm:text-lg font-bold text-stone-900 mt-1 leading-snug">
+                        "{DAILY_QUESTIONS[questionIdx]}"
+                      </p>
+                    </div>
+                    <p className="text-xs text-amber-700/80 mt-3 font-medium">💡 오늘 일기를 쓸 때 이 질문을 떠올려 보세요.</p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-sage-50 to-emerald-50/60 rounded-3xl p-5 border border-sage-200/80 shadow-soft flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2 text-xs font-bold text-sage-800">
+                        <span className="flex items-center gap-1.5"><Icon.Sparkles className="w-4 h-4 text-sage-600" />오늘의 감사 한 문장</span>
+                        <button
+                          onClick={() => setQuoteIdx((prev) => (prev + 1) % INSPIRING_QUOTES.length)}
+                          className="flex items-center gap-1 text-[11px] text-sage-700 hover:bg-sage-100/70 px-2 py-0.5 rounded"
+                        >
+                          <Icon.Refresh className="w-3 h-3" /> 새로고침
+                        </button>
+                      </div>
+                      <p className="text-sm sm:text-base font-medium text-stone-800 mt-1 italic leading-relaxed">
+                        "{INSPIRING_QUOTES[quoteIdx]}"
+                      </p>
+                    </div>
+                    <p className="text-xs text-sage-700/80 mt-3 font-medium">🌱 작은 감사가 모여 행복한 오늘을 만듭니다.</p>
+                  </div>
+                </div>
+
+                {/* Habit Statistics */}
+                <div className="bg-white rounded-3xl p-5 border border-stone-100 shadow-soft">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-stone-700">나의 감사 습관 (이번 달)</h3>
+                    <span className="text-xs font-medium text-sage-700 bg-sage-50 px-2.5 py-0.5 rounded-full border border-sage-200">
+                      나와의 따뜻한 약속 🌱
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-cream-50 rounded-2xl p-3 border border-stone-100">
+                      <span className="text-2xl">🌱</span>
+                      <div className="text-xs text-stone-500 mt-1">이번 달 작성</div>
+                      <div className="text-xl font-bold text-stone-800">{studentStats.monthCount}일</div>
+                    </div>
+                    <div className="bg-cream-50 rounded-2xl p-3 border border-stone-100">
+                      <span className="text-2xl">💚</span>
+                      <div className="text-xs text-stone-500 mt-1">기록한 감사</div>
+                      <div className="text-xl font-bold text-stone-800">{studentStats.totalGratitudes}개</div>
+                    </div>
+                    <div className="bg-cream-50 rounded-2xl p-3 border border-stone-100">
+                      <span className="text-2xl">🔥</span>
+                      <div className="text-xs text-stone-500 mt-1">연속 작성</div>
+                      <div className="text-xl font-bold text-stone-800">{studentStats.streak}일</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monthly Calendar */}
+                <div className="bg-white rounded-3xl p-5 sm:p-7 border border-stone-100 shadow-soft">
+                  <div className="flex items-center justify-between mb-6 pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <Icon.Calendar className="w-5 h-5 text-sage-600" />
+                      <h3 className="text-xl font-bold text-stone-900">{currentYear}년 {currentMonth}월</h3>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          const now = new Date();
+                          setCurrentYear(now.getFullYear());
+                          setCurrentMonth(now.getMonth() + 1);
+                        }}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 mr-1"
+                      >
+                        오늘
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (currentMonth === 1) { setCurrentYear(y => y - 1); setCurrentMonth(12); }
+                          else { setCurrentMonth(m => m - 1); }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-stone-100"
+                      >
+                        <Icon.ChevronLeft className="w-4 h-4 text-stone-600" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (currentMonth === 12) { setCurrentYear(y => y + 1); setCurrentMonth(1); }
+                          else { setCurrentMonth(m => m + 1); }
+                        }}
+                        className="p-1.5 rounded-lg hover:bg-stone-100"
+                      >
+                        <Icon.ChevronRight className="w-4 h-4 text-stone-600" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 text-center text-xs font-semibold text-stone-400">
+                    <div className="text-coral-500">일</div>
+                    <div>월</div><div>화</div><div>수</div><div>목</div><div>금</div>
+                    <div className="text-sky-500">토</div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                    {getCalendarGrid(currentYear, currentMonth).map(({ day, dateStr, isCurrentMonth }) => {
+                      const isDone = studentEntriesMap.has(dateStr);
+                      const isToday = dateStr === getTodayString();
+
+                      return (
+                        <button
+                          key={dateStr}
+                          onClick={() => handleSelectDate(dateStr)}
+                          className={`p-2 min-h-[62px] sm:min-h-[72px] rounded-2xl border flex flex-col justify-between text-left transition ${
+                            !isCurrentMonth ? 'opacity-30 border-transparent' :
+                            isToday ? 'border-sage-400 bg-sage-50/60 ring-2 ring-sage-300' :
+                            isDone ? 'bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50' :
+                            'bg-cream-50/50 border-stone-100 hover:bg-cream-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className={`text-xs sm:text-sm font-semibold ${isToday ? 'text-sage-800 font-bold underline' : 'text-stone-700'}`}>
+                              {day}
+                            </span>
+                            {isToday && <span className="text-[10px] text-sage-700 bg-sage-200 px-1 rounded">오늘</span>}
+                          </div>
+                          <div className="flex items-center justify-center my-auto">
+                            {isDone ? (
+                              <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                                <Icon.Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* Write Gratitude Modal */}
+          {modalMode === 'write' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-card border border-stone-100 max-h-[92vh] overflow-y-auto animate-scale-in space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
+                      <span>🌱</span>
+                      <span>{formatKoreanDate(selectedDate)}, 오늘의 감사일기</span>
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5">오늘 하루 감사했던 일을 세 가지 적어보세요.</p>
+                  </div>
+                  <button onClick={() => setModalMode(null)} className="p-1 rounded-full text-stone-400 hover:bg-stone-100">
+                    <Icon.X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveDiary} className="space-y-4">
+                  {/* Validation & Encouragement Banner */}
+                  {validationError && (
+                    <div className="p-4 bg-amber-50/95 border-2 border-amber-300 rounded-2xl animate-gentle-nudge space-y-2 text-left shadow-sm">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center text-lg flex-shrink-0 mt-0.5">
+                          💭
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <h4 className="text-xs sm:text-sm font-bold text-amber-950 flex items-center gap-1.5">
+                            <span>{validationError.title}</span>
+                          </h4>
+                          <p className="text-xs text-amber-900 leading-relaxed font-medium">
+                            {validationError.message}
+                          </p>
+                          {validationError.suggestion && (
+                            <div className="text-[11px] text-amber-900 bg-white/90 p-2.5 rounded-xl border border-amber-200 mt-1.5 flex items-start gap-1.5 shadow-2xs">
+                              <span className="font-bold text-amber-800 flex-shrink-0">🌱 작성 팁:</span>
+                              <span>{validationError.suggestion}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Input 1 */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    validationError && validationError.field === 1
+                      ? 'bg-amber-50/40 border-amber-400 ring-2 ring-amber-300'
+                      : 'bg-cream-50 border-stone-200 focus-within:border-sage-400 focus-within:ring-2 focus-within:ring-sage-200'
+                  }`}>
+                    <label className="block text-sm font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-sage-200 text-sage-800 text-xs flex items-center justify-center font-bold">1</span>
+                      <span>오늘 감사했던 일은 무엇인가요?</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={diaryG1}
+                      onChange={(e) => {
+                        setDiaryG1(e.target.value);
+                        if (validationError && validationError.field === 1) setValidationError(null);
+                      }}
+                      placeholder="예: 짝꿍이 모르는 문제를 친절하게 가르쳐 주었어요."
+                      className="w-full bg-transparent border-0 text-sm sm:text-base text-stone-800 focus:outline-none resize-none"
+                    />
+                    <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-stone-200/60 text-[11px]">
+                      <div>
+                        {(() => {
+                          const clean = diaryG1.trim().replace(/\s/g, '');
+                          if (clean.length === 0) {
+                            return <span className="text-stone-400">💡 단어가 아닌 완성된 문장(~했어요, ~했습니다)으로 적어보세요</span>;
+                          }
+                          const q = checkGratitudeQuality(diaryG1);
+                          if (!q.valid) {
+                            return <span className="text-amber-700 font-medium">{q.summaryBadge || `🌱 ${q.message.split('.')[0]}`}</span>;
+                          }
+                          return <span className="text-emerald-700 font-medium flex items-center gap-1">✓ 따뜻하고 정성스러운 감사 문장이에요!</span>;
+                        })()}
+                      </div>
+                      <span className={`font-semibold text-[10px] ${checkGratitudeQuality(diaryG1).valid ? 'text-emerald-600 font-bold' : 'text-stone-400'}`}>
+                        {diaryG1.trim().replace(/\s/g, '').length}자
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Input 2 */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    validationError && validationError.field === 2
+                      ? 'bg-amber-50/40 border-amber-400 ring-2 ring-amber-300'
+                      : 'bg-cream-50 border-stone-200 focus-within:border-sage-400 focus-within:ring-2 focus-within:ring-sage-200'
+                  }`}>
+                    <label className="block text-sm font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-sage-200 text-sage-800 text-xs flex items-center justify-center font-bold">2</span>
+                      <span>또 어떤 일에 감사했나요?</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={diaryG2}
+                      onChange={(e) => {
+                        setDiaryG2(e.target.value);
+                        if (validationError && validationError.field === 2) setValidationError(null);
+                      }}
+                      placeholder="예: 점심 급식에 내가 제일 좋아하는 돈가스가 나왔어요."
+                      className="w-full bg-transparent border-0 text-sm sm:text-base text-stone-800 focus:outline-none resize-none"
+                    />
+                    <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-stone-200/60 text-[11px]">
+                      <div>
+                        {(() => {
+                          const clean = diaryG2.trim().replace(/\s/g, '');
+                          if (clean.length === 0) {
+                            return <span className="text-stone-400">💡 단어가 아닌 완성된 문장(~했어요, ~했습니다)으로 적어보세요</span>;
+                          }
+                          const q = checkGratitudeQuality(diaryG2);
+                          if (!q.valid) {
+                            return <span className="text-amber-700 font-medium">{q.summaryBadge || `🌱 ${q.message.split('.')[0]}`}</span>;
+                          }
+                          return <span className="text-emerald-700 font-medium flex items-center gap-1">✓ 따뜻하고 정성스러운 감사 문장이에요!</span>;
+                        })()}
+                      </div>
+                      <span className={`font-semibold text-[10px] ${checkGratitudeQuality(diaryG2).valid ? 'text-emerald-600 font-bold' : 'text-stone-400'}`}>
+                        {diaryG2.trim().replace(/\s/g, '').length}자
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Input 3 */}
+                  <div className={`p-4 rounded-2xl border transition-all ${
+                    validationError && validationError.field === 3
+                      ? 'bg-amber-50/40 border-amber-400 ring-2 ring-amber-300'
+                      : 'bg-cream-50 border-stone-200 focus-within:border-sage-400 focus-within:ring-2 focus-within:ring-sage-200'
+                  }`}>
+                    <label className="block text-sm font-bold text-stone-800 mb-1 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-sage-200 text-sage-800 text-xs flex items-center justify-center font-bold">3</span>
+                      <span>마지막으로 감사한 일은 무엇인가요?</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={diaryG3}
+                      onChange={(e) => {
+                        setDiaryG3(e.target.value);
+                        if (validationError && validationError.field === 3) setValidationError(null);
+                      }}
+                      placeholder="예: 포기하지 않고 숙제를 끝까지 다 풀어서 스스로 뿌듯했어요."
+                      className="w-full bg-transparent border-0 text-sm sm:text-base text-stone-800 focus:outline-none resize-none"
+                    />
+                    <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-stone-200/60 text-[11px]">
+                      <div>
+                        {(() => {
+                          const clean = diaryG3.trim().replace(/\s/g, '');
+                          if (clean.length === 0) {
+                            return <span className="text-stone-400">💡 단어가 아닌 완성된 문장(~했어요, ~했습니다)으로 적어보세요</span>;
+                          }
+                          const q = checkGratitudeQuality(diaryG3);
+                          if (!q.valid) {
+                            return <span className="text-amber-700 font-medium">{q.summaryBadge || `🌱 ${q.message.split('.')[0]}`}</span>;
+                          }
+                          return <span className="text-emerald-700 font-medium flex items-center gap-1">✓ 따뜻하고 정성스러운 감사 문장이에요!</span>;
+                        })()}
+                      </div>
+                      <span className={`font-semibold text-[10px] ${checkGratitudeQuality(diaryG3).valid ? 'text-emerald-600 font-bold' : 'text-stone-400'}`}>
+                        {diaryG3.trim().replace(/\s/g, '').length}자
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Examples */}
+                  <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200/80 text-xs text-stone-600">
+                    <div className="font-bold text-amber-900 mb-1 flex items-center justify-between">
+                      <span>💡 감사한 일의 예 (클릭하면 내용에 쏙 들어갑니다)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {GRATITUDE_EXAMPLES.map((ex, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            if (!diaryG1.trim()) setDiaryG1(ex);
+                            else if (!diaryG2.trim()) setDiaryG2(ex);
+                            else if (!diaryG3.trim()) setDiaryG3(ex);
+                            setValidationError(null);
+                          }}
+                          className="text-left text-stone-700 hover:text-amber-900 hover:bg-amber-100/60 p-1 rounded transition text-[11px]"
+                        >
+                          • {ex}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+                    <button
+                      type="button"
+                      onClick={() => setModalMode(null)}
+                      className="px-4 py-2 rounded-xl border border-stone-200 text-stone-700 text-sm font-medium hover:bg-stone-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-sage-600 hover:bg-sage-700 text-white text-sm font-bold shadow-soft flex items-center gap-2"
+                    >
+                      <Icon.Save className="w-4 h-4" />
+                      <span>감사일기 저장하기</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Detail Gratitude Modal */}
+          {modalMode === 'detail' && studentEntriesMap.get(selectedDate) && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-card border border-stone-100 max-h-[92vh] overflow-y-auto animate-scale-in space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <h3 className="text-lg sm:text-xl font-bold text-stone-900 flex items-center gap-2">
+                    <Icon.Calendar className="w-5 h-5 text-sage-600" />
+                    <span>{formatKoreanDate(selectedDate)} 감사일기</span>
+                  </h3>
+                  <button onClick={() => setModalMode(null)} className="p-1 rounded-full text-stone-400 hover:bg-stone-100">
+                    <Icon.X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="p-3.5 bg-cream-50 rounded-2xl border border-stone-100 flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sage-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">1</span>
+                    <p className="text-sm sm:text-base text-stone-800">{studentEntriesMap.get(selectedDate).gratitude1}</p>
+                  </div>
+                  <div className="p-3.5 bg-cream-50 rounded-2xl border border-stone-100 flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sage-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">2</span>
+                    <p className="text-sm sm:text-base text-stone-800">{studentEntriesMap.get(selectedDate).gratitude2}</p>
+                  </div>
+                  <div className="p-3.5 bg-cream-50 rounded-2xl border border-stone-100 flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sage-500 text-white text-xs flex items-center justify-center font-bold flex-shrink-0 mt-0.5">3</span>
+                    <p className="text-sm sm:text-base text-stone-800">{studentEntriesMap.get(selectedDate).gratitude3}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-sage-50 to-emerald-50 rounded-2xl p-4 border border-sage-200">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-sage-900 mb-1">
+                    <Icon.Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>AI의 오늘의 격려 코멘트</span>
+                  </div>
+                  <p className="text-sm text-stone-800 font-medium leading-relaxed">
+                    "{studentEntriesMap.get(selectedDate).aiComment}"
+                  </p>
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-stone-100">
+                  <button
+                    onClick={() => setModalMode('write')}
+                    className="px-4 py-2 rounded-xl border border-stone-200 text-stone-700 text-xs font-semibold hover:bg-stone-50 flex items-center gap-1.5"
+                  >
+                    <Icon.Edit className="w-3.5 h-3.5" />
+                    <span>내용 수정하기</span>
+                  </button>
+                  <button
+                    onClick={() => setModalMode(null)}
+                    className="px-5 py-2 rounded-xl bg-sage-600 hover:bg-sage-700 text-white text-xs font-bold shadow-xs"
+                  >
+                    확인 완료
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Teacher Student Diary Modal */}
+          {isDetailModalOpen && selectedStudentForModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-card border border-stone-100 max-h-[92vh] overflow-y-auto animate-scale-in space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-stone-900">
+                      {selectedStudentForModal.number}번 {selectedStudentForModal.name} 학생 감사일기
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5">{formatKoreanDate(teacherSelectedDate)} 기준</p>
+                  </div>
+                  <button onClick={() => setIsDetailModalOpen(false)} className="p-1 rounded-full text-stone-400 hover:bg-stone-100">
+                    <Icon.X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {teacherEntriesMap.get(selectedStudentForModal.id) ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-cream-50 rounded-xl border border-stone-100 text-sm">
+                      <span className="font-bold text-sage-700 mr-2">1.</span>
+                      {teacherEntriesMap.get(selectedStudentForModal.id).gratitude1}
+                    </div>
+                    <div className="p-3 bg-cream-50 rounded-xl border border-stone-100 text-sm">
+                      <span className="font-bold text-sage-700 mr-2">2.</span>
+                      {teacherEntriesMap.get(selectedStudentForModal.id).gratitude2}
+                    </div>
+                    <div className="p-3 bg-cream-50 rounded-xl border border-stone-100 text-sm">
+                      <span className="font-bold text-sage-700 mr-2">3.</span>
+                      {teacherEntriesMap.get(selectedStudentForModal.id).gratitude3}
+                    </div>
+
+                    <div className="p-3.5 bg-sage-50 rounded-xl border border-sage-200 text-xs">
+                      <span className="font-bold text-sage-900 block mb-1">AI 격려 코멘트:</span>
+                      <p className="text-stone-700 italic">"{teacherEntriesMap.get(selectedStudentForModal.id).aiComment}"</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center text-stone-400 text-sm bg-stone-50 rounded-2xl">
+                    해당 날짜에 작성된 감사일기가 없습니다.
+                  </div>
+                )}
+
+                <div className="border-t border-stone-100 pt-4 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                    <Icon.Lock className="w-3.5 h-3.5 text-purple-600" />
+                    <span>담임교사 전용 비공개 상담·지도 메모 (학생 비노출)</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={teacherNoteText}
+                    onChange={(e) => setTeacherNoteText(e.target.value)}
+                    placeholder="친구 관계, 정서적 관찰 사항 등을 자유롭게 기록하세요."
+                    className="w-full bg-cream-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveNote(selectedStudentForModal.id)}
+                      className="px-4 py-2 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs font-bold transition"
+                    >
+                      교사 메모 저장
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-stone-200 text-stone-600 text-xs font-medium hover:bg-stone-50"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Teacher Login Modal */}
+          {isTeacherLoginOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-card border border-stone-100 animate-scale-in space-y-4">
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-sage-50 text-sage-600 flex items-center justify-center mx-auto mb-2 text-xl">
+                    <Icon.Lock className="w-6 h-6 text-sage-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-stone-900">선생님 전용 관리 화면</h3>
+                  <p className="text-xs text-stone-500 mt-0.5">교사 인증 비밀번호를 입력해 주세요.</p>
+                </div>
+
+                <form onSubmit={handleTeacherLogin} className="space-y-3">
+                  <input
+                    type="password"
+                    maxLength={10}
+                    value={teacherPinInput}
+                    onChange={(e) => setTeacherPinInput(e.target.value)}
+                    placeholder="비밀번호 4자리 입력"
+                    className="w-full bg-cream-50 border border-stone-200 rounded-xl px-4 py-3 text-center text-base sm:text-lg font-bold tracking-widest text-stone-900 placeholder:text-stone-400 placeholder:text-xs sm:placeholder:text-sm placeholder:font-normal placeholder:tracking-normal focus:outline-none focus:ring-2 focus:ring-sage-400 focus:bg-white transition"
+                    autoFocus
+                  />
+                  {pinError && <div className="text-xs text-coral-600 bg-coral-50 p-2 rounded-lg text-center">{pinError}</div>}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsTeacherLoginOpen(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-600 hover:bg-stone-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 rounded-xl bg-sage-600 hover:bg-sage-700 text-white text-xs font-bold shadow-soft"
+                    >
+                      입장하기
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Export Modal */}
+          {isExportOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-card border border-stone-100 animate-scale-in space-y-4">
+                <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Icon.Download className="w-5 h-5 text-emerald-600" />
+                  <span>감사일기 엑셀 다운로드</span>
+                </h3>
+                <p className="text-xs text-stone-500">
+                  {teacherGrade}학년 {teacherClassNum}반 ({teacherSelectedDate}) 데이터를 엑셀(`.xlsx`) 파일로 다운로드합니다.
+                </p>
+                <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+                  <button onClick={() => setIsExportOpen(false)} className="px-4 py-2 rounded-xl border border-stone-200 text-xs text-stone-600">
+                    취소
+                  </button>
+                  <button onClick={handleExportExcel} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-soft">
+                    다운로드 실행
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Teacher Settings Modal */}
+          {isSettingsOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-card border border-stone-100 animate-scale-in space-y-4">
+                <h3 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Icon.Settings className="w-5 h-5 text-stone-700" />
+                  <span>학급 설정 & 관리</span>
+                </h3>
+                <div className="space-y-4 text-xs max-h-[70vh] overflow-y-auto pr-1">
+                  <div>
+                    <label className="block text-stone-600 font-bold mb-1">교사 비밀번호 (PIN)</label>
+                    <input
+                      type="text"
+                      value={config.teacherPin || '1234'}
+                      onChange={(e) => setConfig({ ...config, teacherPin: e.target.value })}
+                      className="w-full bg-cream-50 border border-stone-200 rounded-xl px-3 py-2 font-bold text-stone-800"
+                    />
+                  </div>
+
+                  {/* Firebase Section */}
+                  <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                        <span>🔥</span>
+                        <span>Firebase 배포 & 클라우드 연동</span>
+                      </div>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-semibold text-amber-800">
+                        <input
+                          type="checkbox"
+                          checked={config.useFirebase || false}
+                          onChange={(e) => setConfig({ ...config, useFirebase: e.target.checked })}
+                          className="w-3.5 h-3.5 text-amber-600 rounded"
+                        />
+                        <span>사용</span>
+                      </label>
+                    </div>
+
+                    {/* Student Live Link */}
+                    <div className="p-2.5 bg-white rounded-xl border border-amber-200/80 space-y-1.5">
+                      <div className="text-[11px] font-bold text-stone-700 flex items-center justify-between">
+                        <span>🌐 학생 배포용 웹 접속 링크</span>
+                        <span className="text-[10px] text-amber-700 font-normal">
+                          {config.firebaseConfig?.projectId ? '연결됨' : 'ID 설정 필요'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex-1 bg-amber-50/50 border border-amber-200/60 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-stone-800 select-all overflow-x-auto whitespace-nowrap">
+                          {config.firebaseConfig?.projectId ? `https://${config.firebaseConfig.projectId}.web.app` : 'https://[프로젝트ID].web.app'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!config.firebaseConfig?.projectId) {
+                              showToast('먼저 아래에 Firebase Project ID를 설정해 주세요.', 'warning');
+                              return;
+                            }
+                            navigator.clipboard.writeText(`https://${config.firebaseConfig.projectId}.web.app`);
+                            setCopiedLink(true);
+                            setTimeout(() => setCopiedLink(false), 2000);
+                            showToast('학생 배포 링크가 복사되었습니다! 📋', 'success');
+                          }}
+                          className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold shrink-0"
+                        >
+                          {copiedLink ? '복사됨!' : '링크 복사'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-amber-800">
+                        * 이 링크를 학생들에게 알림장이나 메신저로 공유하면 언제 어디서나 접속할 수 있습니다.
+                      </p>
+                    </div>
+
+                    {config.useFirebase && (
+                      <div className="space-y-2.5 pt-1">
+                        {/* Snippet Paste */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-stone-700">Firebase 콘솔 설정 코드 붙여넣기</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try {
+                                  const text = firebaseSnippetInput;
+                                  const apiKeyM = text.match(/apiKey:\s*["']([^"']+)["']/);
+                                  const authDomainM = text.match(/authDomain:\s*["']([^"']+)["']/);
+                                  const projectIdM = text.match(/projectId:\s*["']([^"']+)["']/);
+                                  const appIdM = text.match(/appId:\s*["']([^"']+)["']/);
+
+                                  let cfg = { ...(config.firebaseConfig || {}) };
+                                  if (apiKeyM) cfg.apiKey = apiKeyM[1];
+                                  if (authDomainM) cfg.authDomain = authDomainM[1];
+                                  if (projectIdM) cfg.projectId = projectIdM[1];
+                                  if (appIdM) cfg.appId = appIdM[1];
+
+                                  if (apiKeyM || projectIdM) {
+                                    setConfig({ ...config, useFirebase: true, firebaseConfig: cfg });
+                                    showToast('Firebase 설정이 자동 파싱되어 적용되었습니다! 🌱', 'success');
+                                  } else {
+                                    const parsed = JSON.parse(text);
+                                    setConfig({ ...config, useFirebase: true, firebaseConfig: parsed });
+                                    showToast('Firebase JSON 설정이 적용되었습니다! 🌱', 'success');
+                                  }
+                                } catch {
+                                  showToast('설정 코드를 파싱할 수 없습니다. 직접 입력란을 사용해 주세요.', 'warning');
+                                }
+                              }}
+                              className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold"
+                            >
+                              자동 파싱
+                            </button>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={firebaseSnippetInput}
+                            onChange={(e) => setFirebaseSnippetInput(e.target.value)}
+                            placeholder="Firebase 콘솔에서 복사한 firebaseConfig 코드를 여기에 붙여넣으세요."
+                            className="w-full bg-white border border-stone-200 rounded-lg p-2 text-[10px] font-mono"
+                          />
+                        </div>
+
+                        {/* Individual Fields */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-stone-600">Project ID</label>
+                            <input
+                              type="text"
+                              value={config.firebaseConfig?.projectId || ''}
+                              onChange={(e) => setConfig({
+                                ...config,
+                                firebaseConfig: { ...(config.firebaseConfig || {}), projectId: e.target.value.trim() }
+                              })}
+                              placeholder="my-gratitude-school"
+                              className="w-full bg-white border border-stone-200 rounded-lg px-2 py-1 text-[11px] font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-stone-600">API Key</label>
+                            <input
+                              type="password"
+                              value={config.firebaseConfig?.apiKey || ''}
+                              onChange={(e) => setConfig({
+                                ...config,
+                                firebaseConfig: { ...(config.firebaseConfig || {}), apiKey: e.target.value.trim() }
+                              })}
+                              placeholder="AIzaSy..."
+                              className="w-full bg-white border border-stone-200 rounded-lg px-2 py-1 text-[11px] font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Rules & Deploy Guide */}
+                        <div className="flex items-center justify-between pt-1 border-t border-amber-200/60">
+                          <span className="text-[11px] text-amber-900">Firestore 보안 규칙(Rules)</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const rules = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}";
+                              navigator.clipboard.writeText(rules);
+                              setCopiedRules(true);
+                              setTimeout(() => setCopiedRules(false), 2000);
+                              showToast('Firestore 보안 규칙이 복사되었습니다! 📋', 'success');
+                            }}
+                            className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[10px] font-semibold"
+                          >
+                            {copiedRules ? '복사됨!' : '규칙 복사'}
+                          </button>
+                        </div>
+
+                        <div className="p-2 bg-sage-50 rounded-lg border border-sage-200 text-[10px] text-sage-900 leading-relaxed">
+                          🚀 <strong>원클릭 배포:</strong> 폴더 안의 <strong>`배포하기_firebase.bat`</strong>을 더블 클릭하면 최신 웹앱이 즉시 웹에 배포됩니다.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-rose-900 text-xs">모든 데이터 초기화</div>
+                      <div className="text-[11px] text-rose-700">저장된 모든 감사일기와 학생 명단을 비웁니다.</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('저장된 모든 감사일기와 학생 데이터를 초기화하시겠습니까?')) {
+                          localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify([]));
+                          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify([]));
+                          localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify([]));
+                          localStorage.removeItem(STORAGE_KEYS.LAST_STUDENT);
+                          setEntries([]);
+                          setNotes([]);
+                          setStudents([]);
+                          setCurrentStudent(null);
+                          showToast('모든 데이터가 깨끗하게 비워졌습니다. 🌱', 'info');
+                          setIsSettingsOpen(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition shadow-xs"
+                    >
+                      전체 비우기
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
+                      showToast('설정이 저장되었습니다.', 'success');
+                      setIsSettingsOpen(false);
+                    }}
+                    className="px-4 py-2 bg-sage-600 text-white text-xs font-bold rounded-xl shadow-soft"
+                  >
+                    저장 및 닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reset Confirmation Modal */}
+          {isResetModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
+              <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-soft space-y-4 border border-stone-100 animate-scale-in">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 bg-rose-100 text-rose-700 rounded-2xl">
+                      <Icon.RotateCcw className="w-5 h-5 text-rose-600" />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-bold text-stone-900">데이터 전체 리셋 및 초기화</h3>
+                      <p className="text-[11px] text-stone-500">원하시는 리셋 범위를 선택해 주세요</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsResetModalOpen(false)} className="text-stone-400 hover:text-stone-600 p-1 rounded-lg">
+                    <Icon.X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5">
+                  <span className="text-base">⚠️</span>
+                  <p className="text-xs text-rose-900 leading-relaxed font-medium">
+                    <span className="font-bold">주의:</span> 리셋 후에는 데이터를 다시 복구할 수 없습니다. 새 학기나 새로운 학급을 시작하거나, 테스트 목적으로 작성된 데이터를 비우실 때 사용하세요.
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {/* Option 1: Complete Reset */}
+                  <div className="p-4 bg-cream-50/80 border-2 border-rose-200 hover:border-rose-300 rounded-2xl transition">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="font-bold text-sm text-stone-900 flex items-center gap-1.5">
+                        <span className="text-rose-600">⚠️</span>
+                        <span>모든 데이터 완전 리셋 (완전 백지화)</span>
+                      </div>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-800 rounded-md shrink-0">전체 초기화</span>
+                    </div>
+                    <p className="text-xs text-stone-600 mb-3 leading-relaxed">
+                      저장된 <span className="font-bold text-stone-800">학생 명단, 감사일기 전체, 교사 관찰 메모</span>를 모두 삭제하여 처음 설치한 상태처럼 깨끗하게 비웁니다.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResetAll}
+                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Icon.RotateCcw className="w-3.5 h-3.5" />
+                      <span>모든 데이터 완전 리셋 실행</span>
+                    </button>
+                  </div>
+
+                  {/* Option 2: Diaries only */}
+                  <div className="p-4 bg-cream-50/80 border border-amber-200 hover:border-amber-300 rounded-2xl transition">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="font-bold text-sm text-stone-900 flex items-center gap-1.5">
+                        <span className="text-amber-600">📝</span>
+                        <span>감사일기 기록만 비우기 (학생 명단 유지)</span>
+                      </div>
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded-md shrink-0">명단 보존</span>
+                    </div>
+                    <p className="text-xs text-stone-600 mb-3 leading-relaxed">
+                      <span className="font-bold text-emerald-700">학생 명단(이름, 번호)은 안전하게 그대로 유지</span>하고, 작성된 감사일기와 교사 메모만 비워 새로 일기를 시작합니다.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleResetDiariesOnly}
+                      className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Icon.FileText className="w-3.5 h-3.5" />
+                      <span>일기 및 메모만 비우기 실행</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsResetModalOpen(false)}
+                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification Container */}
+          {toasts.length > 0 && (
+            <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full px-3">
+              {toasts.map(toast => (
+                <div
+                  key={toast.id}
+                  className="bg-white border border-stone-200 text-stone-800 p-3.5 rounded-2xl shadow-soft flex items-center justify-between text-xs font-bold animate-scale-in"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{toast.type === 'success' ? '🌱' : 'ℹ️'}</span>
+                    <span>{toast.message}</span>
+                  </div>
+                  <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="text-stone-400 hover:text-stone-600 ml-2">
+                    <Icon.X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className="bg-white/80 border-t border-stone-100 py-6 text-center text-xs text-stone-400">
+            <div className="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span>🌱</span>
+                <span className="font-semibold text-stone-600">오늘의 감사 - 감사일기</span>
+                <span>—</span>
+                <span>초·중·고 학교 맞춤형 감사 습관 플랫폼</span>
+              </div>
+              <div className="text-stone-400">
+                개인정보를 안전하게 보호하며, AI는 오직 학생을 격려하고 응원합니다.
+              </div>
+            </div>
+          </footer>
+        </div>
+      );
+    }
+
+    // Render to DOM
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
